@@ -13,7 +13,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -22,14 +23,12 @@ jobs:
 
       - name: Install and Build
         run: |
-          # נכנסים לתיקייה ומריצים התקנה ובנייה
           if [ -d "scratchv" ]; then
-            echo "Entering scratchv directory..."
             cd scratchv
             npm install
             npm run build
           else
-            echo "Error: scratchv directory not found!"
+            echo "Directory scratchv not found"
             exit 1
           fi
         env:
@@ -41,7 +40,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # נתיב ספציפי ומדויק לתיקיית התוצר שנבנתה
           path: 'scratchv/dist/'
 
       - name: Deploy to GitHub Pages

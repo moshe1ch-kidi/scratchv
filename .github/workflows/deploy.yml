@@ -16,9 +16,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: List files (Debug)
-        run: ls -R  # הפקודה הזו תדפיס לנו את כל הקבצים והתיקיות במאגר
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -26,20 +23,8 @@ jobs:
 
       - name: Install and Build
         run: |
-          # ננסה למצוא את התיקייה באופן גמיש יותר
-          TARGET_DIR=$(find . -maxdepth 1 -type d -iname "scratchv" | head -n 1)
-          
-          if [ -n "$TARGET_DIR" ]; then
-            echo "Found directory at: $TARGET_DIR"
-            cd "$TARGET_DIR"
-            npm install
-            npm run build
-          else
-            echo "COULD NOT FIND SCRATCHV! Printing current path:"
-            pwd
-            ls -F
-            exit 1
-          fi
+          npm install
+          npm run build
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
@@ -49,8 +34,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # נחפש את ה-dist בכל מקום שנוצר
-          path: './**/dist/'
+          # מכיוון שהכל בשורש, ה-dist נוצר בתיקיית האם
+          path: './dist/'
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4

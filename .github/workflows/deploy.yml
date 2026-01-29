@@ -1,0 +1,45 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: ["main"] # וודא שזה שם הענף הראשי שלך
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          # אומרים ל-npm לחפש את ה-cache בתוך התיקייה הנכונה
+          cache-dependency-path: './scratchv/package-lock.json'
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: ./scratchv
+
+      - name: Build project
+        run: npm run build
+        working-directory: ./scratchv
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # הנתיב לתיקיית ה-dist בתוך תיקיית scratchv
+          path: './scratchv/dist'
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4

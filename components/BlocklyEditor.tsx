@@ -963,10 +963,17 @@ const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlC
   const blocklyDiv = React.useRef<HTMLDivElement>(null);
   const workspaceRef = React.useRef<Blockly.WorkspaceSvg | null>(null);
 
+  // Use a ref to hold the latest callbacks to prevent stale closures in the listener
+  const callbacksRef = React.useRef({ onCodeChange, onXmlChange });
   React.useEffect(() => {
-    if (!blocklyDiv.current || workspaceRef.current) return;
+    callbacksRef.current = { onCodeChange, onXmlChange };
+  }, [onCodeChange, onXmlChange]);
 
-    workspaceRef.current = Blockly.inject(blocklyDiv.current, {
+  // Effect for workspace setup and teardown, runs only once on mount.
+  React.useEffect(() => {
+    if (!blocklyDiv.current) return;
+
+    const workspace = Blockly.inject(blocklyDiv.current, {
         toolbox: STANDARD_TOOLBOX,
         renderer: 'tall',
         rtl: false,
@@ -988,9 +995,11 @@ const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlC
             scaleSpeed: 1.2,
         }
     });
+    workspaceRef.current = workspace;
     
-    const updateWorkspaceState = () => {
-      if (!workspaceRef.current) return;
+    const updateWorkspaceState = (event: Blockly.Events.Abstract) => {
+      // Only update state on user interactions, not programmatic loads.
+      if (!event.isUiEvent || !workspaceRef.current) return;
       
       const topBlocks = workspaceRef.current.getTopBlocks(true);
       let fullCode = '';
@@ -1015,51 +1024,54 @@ const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlC
               default: break;
           }
       });
-      onCodeChange(fullCode);
+      callbacksRef.current.onCodeChange(fullCode);
 
       const newXmlDom = Blockly.Xml.workspaceToDom(workspaceRef.current);
       const newXmlText = Blockly.Xml.domToText(newXmlDom);
-      onXmlChange(newXmlText);
+      callbacksRef.current.onXmlChange(newXmlText);
     };
 
-    workspaceRef.current.addChangeListener(updateWorkspaceState);
+    workspace.addChangeListener(updateWorkspaceState);
     
-    // Initial load
-     if (xml && workspaceRef.current) {
-        const dom = Blockly.utils.xml.textToDom(xml);
-        Blockly.Xml.clearWorkspaceAndLoadFromXml(dom, workspaceRef.current);
-    }
-    
-    setTimeout(() => {
-        if(workspaceRef.current) Blockly.svgResize(workspaceRef.current);
-        updateWorkspaceState();
-    }, 100);
-
-
     const handleResize = () => {
-        if(workspaceRef.current) Blockly.svgResize(workspaceRef.current);
+        if(workspace) Blockly.svgResize(workspace);
     };
     window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (workspaceRef.current) {
-        workspaceRef.current.dispose();
-        workspaceRef.current = null;
+      if (workspace) {
+        workspace.dispose();
       }
+      workspaceRef.current = null;
     };
-  }, [onCodeChange, onXmlChange]);
+  }, []); // Empty dependency array ensures this runs only once.
 
+  // Effect to handle programmatic XML updates from props (e.g., on load or sprite change)
   React.useEffect(() => {
-    if (workspaceRef.current && xml) {
-        const currentXmlDom = Blockly.Xml.workspaceToDom(workspaceRef.current);
-        const currentXmlText = Blockly.Xml.domToText(currentXmlDom);
-        if (currentXmlText !== xml) {
-            const dom = Blockly.utils.xml.textToDom(xml);
-            Blockly.Xml.clearWorkspaceAndLoadFromXml(dom, workspaceRef.current);
-        }
+    const workspace = workspaceRef.current;
+    if (!workspace || !xml) return;
+    
+    const currentXmlText = Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(workspace));
+    if (currentXmlText === xml) {
+      // No change needed, prevent loops
+      return;
     }
-  }, [xml]);
+
+    // FIX: Disable events during programmatic load to prevent the change listener
+    // from firing and creating a race condition that overwrites the loaded state.
+    Blockly.Events.disable();
+    try {
+        const dom = Blockly.utils.xml.textToDom(xml);
+        Blockly.Xml.clearWorkspaceAndLoadFromXml(dom, workspace);
+    } catch (e) {
+        console.error("Error loading XML into Blockly workspace:", e);
+        // If loading fails, clear the workspace to prevent a corrupted state.
+        workspace.clear();
+    } finally {
+        Blockly.Events.enable();
+    }
+  }, [xml]); // This runs whenever the xml prop from App changes.
 
 
   return (

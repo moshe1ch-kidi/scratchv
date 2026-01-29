@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useState, useLayoutEffect, useEffect } from 'react';
+ import React, { useRef, useMemo, useState, useLayoutEffect, useEffect } from 'react';
 import { Sprite, SpriteState } from '../types';
 
 // Grid constants
@@ -95,22 +95,7 @@ const SpriteCharacter: React.FC<{
     const imageSize = cellSize * 3;
     const finalScaleX = state.scale * state.direction;
     const finalScaleY = state.scale;
-    const [noTransition, setNoTransition] = useState(false);
-    const prevPositionRef = useRef({ x: state.x, y: state.y });
-
-    useEffect(() => {
-        const jumpThreshold = GRID_COLS / 2; // A jump of more than half the screen width is a wrap-around
-        const dx = Math.abs(prevPositionRef.current.x - state.x);
-        const dy = Math.abs(prevPositionRef.current.y - state.y);
-
-        if (dx > jumpThreshold || dy > jumpThreshold) {
-            setNoTransition(true);
-            const timer = setTimeout(() => setNoTransition(false), 50); // A small delay to re-enable transitions
-            return () => clearTimeout(timer);
-        }
-        prevPositionRef.current = { x: state.x, y: state.y };
-    }, [state.x, state.y]);
-
+    
     // Calculate the pixel coordinates of the sprite's CENTER based on its grid state
     const pixelCenterX = (state.x - 0.5) * cellSize;
     const pixelCenterY = (state.y - 0.5) * cellSize;
@@ -129,11 +114,11 @@ const SpriteCharacter: React.FC<{
         wrapperStyles.transform = `translate(${dragDelta.x}px, ${dragDelta.y}px)`;
     }
 
-    const transitionClass = noTransition || isDragging ? '' : 'transition-[bottom,left] duration-100 ease-in-out';
+    // The transition is now handled by requestAnimationFrame in App.tsx, so no CSS transition class is needed here.
 
     return (
         <div 
-            className={`absolute group/sprite ${transitionClass} ${sprite.type === 'image' ? 'cursor-grab' : 'cursor-pointer'}`}
+            className={`absolute group/sprite ${sprite.type === 'image' ? 'cursor-grab' : 'cursor-pointer'}`}
             style={wrapperStyles}
             onDoubleClick={onCharacterDoubleClick}
             onMouseDown={(e) => {

@@ -406,14 +406,14 @@ const App: React.FC = () => {
       turnRight: async (steps: number) => {
           if (!spriteId) return;
           for (let i = 0; i < steps; i++) {
-              updateRuntimeSprite(spriteId, s => ({ ...s, rotation: (s.rotation + 15) % 360 }));
+              updateRuntimeSprite(spriteId, s => ({ ...s, rotation: s.rotation + 15 }));
               await motionDelay(BASE_MOTION_DELAY);
           }
       },
       turnLeft: async (steps: number) => {
           if (!spriteId) return;
           for (let i = 0; i < steps; i++) {
-              updateRuntimeSprite(spriteId, s => ({ ...s, rotation: (s.rotation - 15 + 360) % 360 }));
+              updateRuntimeSprite(spriteId, s => ({ ...s, rotation: s.rotation - 15 }));
               await motionDelay(BASE_MOTION_DELAY);
           }
       },

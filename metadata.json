@@ -1,0 +1,7 @@
+{
+  "name": "Blockly AI Master1",
+  "description": "An advanced training environment for learning programming with blocks (Blockly) featuring a personal AI tutor.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

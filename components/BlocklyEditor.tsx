@@ -1,0 +1,1076 @@
+import React from 'react';
+import Blockly from 'blockly';
+import * as BlocklyJS from 'blockly/javascript';
+import * as En from 'blockly/msg/en';
+import './BlocklyStyles.css';
+
+// Initialize locale
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const locale = (En as any).default || En;
+Blockly.setLocale(locale);
+
+// --- Generator Import Compatibility ---
+const getJavascriptGenerator = () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lib = BlocklyJS as any;
+  if (lib.javascriptGenerator) return lib.javascriptGenerator;
+  if (lib.default) {
+      if (lib.default.workspaceToCode) return lib.default;
+      if (lib.default.javascriptGenerator) return lib.default.javascriptGenerator;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (typeof window !== 'undefined' && (window as any).Blockly?.JavaScript) return (window as any).Blockly.JavaScript;
+  if (lib.JavascriptGenerator) {
+      try { return new lib.JavascriptGenerator('JavaScript'); } catch (e) { console.warn(e); }
+  }
+  if (typeof lib.workspaceToCode === 'function') return lib;
+  return null;
+};
+
+const javascriptGenerator = getJavascriptGenerator();
+
+// Helper to safely register block generators
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const registerGenerator = (blockName: string, generatorFn: (block: any) => string | [string, any]) => {
+    if (!javascriptGenerator) return;
+    if (javascriptGenerator.forBlock) {
+        javascriptGenerator.forBlock[blockName] = generatorFn;
+    } else {
+        try { javascriptGenerator[blockName] = generatorFn; } catch (e) {}
+    }
+};
+
+// --- Custom Renderer for Taller Blocks ---
+const registerTallRenderer = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const B = Blockly as any;
+    
+    if (B.registry && B.registry.registry_ && B.registry.registry_['renderer'] && B.registry.registry_['renderer']['tall']) {
+        return;
+    }
+
+    if (B.geras && B.blockRendering) {
+        class TallConstantProvider extends B.geras.ConstantProvider {
+            constructor() {
+                super();
+                this.MIN_BLOCK_HEIGHT = 80; // Increased for uniform block height
+                this.ROW_HEIGHT = 80;       // Increased for uniform block height
+                this.FIELD_BORDER_RECT_Y_PADDING = 12; 
+                this.FIELD_BORDER_RECT_HEIGHT = 32;
+                this.FIELD_BORDER_RECT_X_PADDING = 10;
+            }
+        }
+
+        class TallRenderer extends B.geras.Renderer {
+            constructor(name: string) {
+                super(name);
+            }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            makeConstants_() {
+                return new TallConstantProvider();
+            }
+        }
+
+        try {
+             B.blockRendering.register('tall', TallRenderer);
+        } catch(e) {
+            console.warn("Renderer registration failed", e);
+        }
+    }
+};
+
+registerTallRenderer();
+
+
+// --- Custom Field with Visual Numpad ---
+class Number99Field extends Blockly.FieldNumber {
+    constructor(value: string | number) {
+        super(value, 0, 99, 1);
+    }
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    showEditor_() {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const B = Blockly as any;
+        if (!B.DropDownDiv) return;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sourceBlock = (this as any).sourceBlock_;
+        const blockColor = sourceBlock?.getColour() || '#ffffff';
+        
+        let textColor = blockColor;
+        if (blockColor.toUpperCase() === '#FFD700' || blockColor.toUpperCase() === '#FFFF00') {
+             textColor = '#B45309'; 
+        }
+
+        B.DropDownDiv.hideWithoutAnimation();
+        B.DropDownDiv.clearContent();
+        const contentDiv = B.DropDownDiv.getContentDiv();
+        
+        const wrapper = document.createElement('div');
+        wrapper.className = 'blocklyNumpad';
+
+        const display = document.createElement('div');
+        display.className = 'blocklyNumpadDisplay';
+        display.textContent = String((this as Blockly.FieldNumber).getValue());
+        display.style.color = textColor;
+        wrapper.appendChild(display);
+
+        const grid = document.createElement('div');
+        grid.className = 'blocklyNumpadGrid';
+
+        const handleDigit = (digit: string) => {
+            let current = String((this as Blockly.FieldNumber).getValue());
+            if (current === '0') current = '';
+            if (current.length < 2) {
+                const newVal = current + digit;
+                (this as Blockly.FieldNumber).setValue(newVal);
+                display.textContent = newVal;
+            }
+        };
+
+        const handleBackspace = () => {
+            let current = String((this as Blockly.FieldNumber).getValue());
+            if (current.length > 0) {
+                current = current.slice(0, -1);
+                if (current === '') current = '0';
+                (this as Blockly.FieldNumber).setValue(current);
+                display.textContent = current;
+            }
+        };
+
+        const handleOk = () => {
+             B.DropDownDiv.hideIfOwner(this);
+        };
+
+        [1, 2, 3, 4, 5, 6, 7, 8, 9].forEach(num => {
+            const btn = document.createElement('button');
+            btn.textContent = String(num);
+            btn.className = 'blocklyNumpadBtn';
+            btn.style.color = textColor;
+            btn.onclick = (e) => { e.stopPropagation(); handleDigit(String(num)); };
+            grid.appendChild(btn);
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.innerHTML = '<i class="fas fa-arrow-left"></i>'; 
+        delBtn.className = 'blocklyNumpadBtn blocklyNumpadAction';
+        delBtn.onclick = (e) => { e.stopPropagation(); handleBackspace(); };
+        grid.appendChild(delBtn);
+
+        const zeroBtn = document.createElement('button');
+        zeroBtn.textContent = '0';
+        zeroBtn.className = 'blocklyNumpadBtn';
+        zeroBtn.style.color = textColor;
+        zeroBtn.onclick = (e) => { e.stopPropagation(); handleDigit('0'); };
+        grid.appendChild(zeroBtn);
+
+        const okBtn = document.createElement('button');
+        okBtn.innerHTML = '<i class="fas fa-check"></i>';
+        okBtn.className = 'blocklyNumpadBtn blocklyNumpadOk';
+        okBtn.onclick = (e) => { e.stopPropagation(); handleOk(); };
+        grid.appendChild(okBtn);
+
+        wrapper.appendChild(grid);
+        contentDiv.appendChild(wrapper);
+        B.DropDownDiv.setColour(blockColor, blockColor); 
+        B.DropDownDiv.showPositionedByField(this, () => {});
+    }
+}
+
+
+// --- Custom Field for Sound Recording ---
+class FieldSoundRecorder extends Blockly.Field {
+    public isSerializable() { return true; }
+    
+    private mediaRecorder: MediaRecorder | null = null;
+    private audioChunks: Blob[] = [];
+    private stream: MediaStream | null = null;
+    private audioContext: AudioContext | null = null;
+    private analyser: AnalyserNode | null = null;
+    private animationFrameId: number | null = null;
+
+    constructor(value: string) {
+        super(value);
+    }
+
+    /**
+     * @override
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    static fromJson(options: any) {
+        return new this(options['value']);
+    }
+
+    getText() {
+        return `Recording ${(this as Blockly.Field).getValue()}`;
+    }
+
+    showEditor_() {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const B = Blockly as any;
+        if (!B.DropDownDiv) return;
+
+        B.DropDownDiv.hideWithoutAnimation();
+        B.DropDownDiv.clearContent();
+        const contentDiv = B.DropDownDiv.getContentDiv();
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'blocklySoundRecorder';
+        
+        const recordBtn = document.createElement('button');
+        recordBtn.className = 'blocklySoundRecorder-btn record';
+        recordBtn.innerHTML = '<i class="fas fa-microphone"></i> Record';
+
+        const canvas = document.createElement('canvas');
+        canvas.className = 'blocklySoundRecorder-canvas';
+        canvas.style.display = 'none';
+
+        const listDiv = document.createElement('div');
+        listDiv.className = 'blocklySoundRecorder-list';
+        
+        wrapper.appendChild(recordBtn);
+        wrapper.appendChild(canvas);
+        wrapper.appendChild(listDiv);
+        contentDiv.appendChild(wrapper);
+
+        const populateList = () => {
+            listDiv.innerHTML = '';
+            const recordings = this.getRecordings();
+            if (recordings.length === 0) {
+                 listDiv.innerHTML = '<div class="empty-list">No recordings. Click above to record!</div>';
+            }
+            recordings.forEach(rec => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.textContent = `Recording ${rec.id}`;
+                item.onclick = (e) => {
+                    e.stopPropagation();
+                    (this as Blockly.Field).setValue(rec.id);
+                    B.DropDownDiv.hideIfOwner(this);
+                };
+
+                const controls = document.createElement('div');
+                controls.className = 'item-controls';
+
+                const playBtn = document.createElement('button');
+                playBtn.innerHTML = '<i class="fas fa-play"></i>';
+                playBtn.onclick = (e) => { e.stopPropagation(); this.playRecording(rec.key); };
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (confirm(`Delete "Recording ${rec.id}"?`)) {
+                        localStorage.removeItem(rec.key);
+                        populateList();
+                    }
+                };
+
+                controls.appendChild(playBtn);
+                controls.appendChild(deleteBtn);
+                item.appendChild(controls);
+                listDiv.appendChild(item);
+            });
+        };
+
+        recordBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+                this.stopRecording();
+                recordBtn.innerHTML = '<i class="fas fa-microphone"></i> Record';
+                recordBtn.classList.remove('recording');
+                canvas.style.display = 'none';
+                setTimeout(populateList, 100);
+            } else {
+                this.startRecording(canvas);
+                recordBtn.innerHTML = '<i class="fas fa-stop"></i> Stop';
+                recordBtn.classList.add('recording');
+                canvas.style.display = 'block';
+            }
+        };
+
+        populateList();
+        B.DropDownDiv.setColour('#7ED321', '#7ED321');
+        B.DropDownDiv.showPositionedByField(this, () => {
+            this.stopRecording(); // ensure everything is stopped on close
+        });
+    }
+    
+    getRecordings() {
+        const recordings: {key: string, id: string}[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('recording_')) {
+                recordings.push({ key, id: key.replace('recording_', '') });
+            }
+        }
+        recordings.sort((a,b) => parseInt(a.id) - parseInt(b.id));
+        return recordings;
+    }
+    
+    async startRecording(canvas: HTMLCanvasElement) {
+        try {
+            this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.mediaRecorder = new MediaRecorder(this.stream);
+            this.audioChunks = [];
+            
+            this.mediaRecorder.addEventListener("dataavailable", event => {
+                this.audioChunks.push(event.data);
+            });
+            
+            this.mediaRecorder.start();
+            this.visualize(canvas);
+        } catch (err) {
+            console.error("Error accessing microphone:", err);
+            alert("Could not access microphone. Please check permissions.");
+        }
+    }
+    
+    stopRecording() {
+        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+            this.mediaRecorder.addEventListener("stop", () => {
+                const audioBlob = new Blob(this.audioChunks);
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = () => {
+                    const base64data = reader.result as string;
+                    this.saveRecording(base64data);
+                };
+            });
+            this.mediaRecorder.stop();
+        }
+        
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+            this.stream = null;
+        }
+
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+        if (this.audioContext) {
+            this.audioContext.close();
+            this.audioContext = null;
+        }
+    }
+
+    saveRecording(base64data: string) {
+        const recordings = this.getRecordings();
+        const nextId = recordings.length > 0 ? Math.max(...recordings.map(r => parseInt(r.id))) + 1 : 1;
+        localStorage.setItem(`recording_${nextId}`, base64data);
+    }
+    
+    playRecording(key: string) {
+        const base64Audio = localStorage.getItem(key);
+        if (base64Audio) {
+            const audio = new Audio(base64Audio);
+            audio.play();
+        }
+    }
+
+    visualize(canvas: HTMLCanvasElement) {
+        if (!this.stream) return;
+        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        this.analyser = this.audioContext.createAnalyser();
+        const source = this.audioContext.createMediaStreamSource(this.stream);
+        source.connect(this.analyser);
+        
+        this.analyser.fftSize = 256;
+        const bufferLength = this.analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        const canvasCtx = canvas.getContext('2d');
+        if (!canvasCtx) return;
+
+        const draw = () => {
+            if (!this.analyser) return;
+            this.animationFrameId = requestAnimationFrame(draw);
+            this.analyser.getByteTimeDomainData(dataArray);
+
+            canvasCtx.fillStyle = '#f8fafc';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+            canvasCtx.lineWidth = 2;
+            canvasCtx.strokeStyle = '#7ED321';
+            canvasCtx.beginPath();
+            
+            const sliceWidth = canvas.width * 1.0 / bufferLength;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * canvas.height / 2;
+                if (i === 0) {
+                    canvasCtx.moveTo(x, y);
+                } else {
+                    canvasCtx.lineTo(x, y);
+                }
+                x += sliceWidth;
+            }
+
+            canvasCtx.lineTo(canvas.width, canvas.height / 2);
+            canvasCtx.stroke();
+        };
+        draw();
+    }
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+Blockly.fieldRegistry.register('field_sound_recorder', FieldSoundRecorder as any);
+
+
+// --- Icons (Base64 encoded SVGs) ---
+const ICONS = {
+    flag: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/greenFlag.svg",
+    tap: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/OnTouch.svg",
+    bump: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Bump.svg", 
+    
+    // Motion
+    right: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Foward.svg",
+    left: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Back.svg",
+    up: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Up.svg",
+    down: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Down.svg",
+    turnRight: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Right.svg",
+    turnLeft: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Left.svg",
+    hop: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Hop.svg",
+    home: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Home.svg",
+    
+    // Looks
+    say: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Say.svg",
+    grow: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Grow.svg",
+    shrink: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Shrink.svg",
+    resetSize: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Reset.svg",
+    hide: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Disappear.svg",
+    show: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Appear.svg",
+
+    // Sound
+    pop: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Speaker.svg",
+    record: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Microphone.svg",
+
+    // Control
+    wait: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Wait.svg",
+    speed: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Speed.svg",
+    repeat: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Repeat.svg", 
+
+    // End
+    forever: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Forever.svg",
+};
+
+const COLORS = {
+    TRIGGER: '#FFD700', // Yellow
+    MOTION: '#4A90E2',  // Blue
+    LOOKS: '#9013FE',   // Purple
+    SOUND: '#7ED321',   // Green
+    CONTROL: '#F5A623', // Orange
+    END: '#D0021B'      // Red
+};
+
+// Graphical Envelopes for Receive block
+const ENVELOPE_OPTIONS = [
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Orange.svg', 'width': 60, 'height': 50, 'alt': 'Orange'}, 'orange'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Red.svg', 'width': 60, 'height': 50, 'alt': 'Red'}, 'red'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Yellow.svg', 'width': 60, 'height': 50, 'alt': 'Yellow'}, 'yellow'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Green.svg', 'width': 60, 'height': 50, 'alt': 'Green'}, 'green'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Blue.svg', 'width': 60, 'height': 50, 'alt': 'Blue'}, 'blue'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Purple.svg', 'width': 60, 'height': 50, 'alt': 'Purple'}, 'purple'],
+];
+
+// Graphical Envelopes for Send block
+const SEND_ENVELOPE_OPTIONS = [
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Orange.svg', 'width': 60, 'height': 50, 'alt': 'Orange'}, 'orange'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Red.svg', 'width': 60, 'height': 50, 'alt': 'Red'}, 'red'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Yellow.svg', 'width': 60, 'height': 50, 'alt': 'Yellow'}, 'yellow'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Green.svg', 'width': 60, 'height': 50, 'alt': 'Green'}, 'green'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Blue.svg', 'width': 60, 'height': 50, 'alt': 'Blue'}, 'blue'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Purple.svg', 'width': 60, 'height': 50, 'alt': 'Purple'}, 'purple'],
+];
+
+// Graphical options for Set Speed block
+const SPEED_OPTIONS = [
+    // Medium is first to be the default
+    [{ 'src': 'https://codejr.org/scratchjr/assets/blockicons/speed1.svg', 'width': 60, 'height': 50, 'alt': 'Medium' }, 'medium'],
+    [{ 'src': 'https://codejr.org/scratchjr/assets/blockicons/speed0.svg', 'width': 60, 'height': 50, 'alt': 'Slow' }, 'slow'],
+    [{ 'src': 'https://codejr.org/scratchjr/assets/blockicons/speed2.svg', 'width': 60, 'height': 50, 'alt': 'Fast' }, 'fast'],
+];
+
+
+const initializeBlocks = () => {
+    /**
+     * Helper to create an image dropdown that adds tooltips to its items.
+     * It overrides the showEditor_ method to post-process the DOM after rendering.
+     * @param options The array of options for the dropdown.
+     * @returns A Blockly.FieldDropdown instance with tooltip functionality.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const createImageDropdownWithTooltips = (options: any) => {
+        const dropdown = new Blockly.FieldDropdown(options);
+        const originalShowEditor = (dropdown as any).showEditor_;
+        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (dropdown as any).showEditor_ = function() {
+            // `this` refers to the dropdown field instance here
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const self = this as any;
+            
+            // Call original function to render the menu
+            originalShowEditor.call(self);
+            
+            // Now that the menu is rendered, we can access its DOM elements
+            const menu = self.menu_ as Blockly.Menu;
+            // Use the standard Blockly API to iterate through menu items, which is more robust
+            // than the potentially non-existent `getChildren` method.
+            // FIX: Cast `menu` to `any` to bypass TypeScript type errors for `getChildCount` and `getChildAt`,
+            // which may not be in the type definitions but exist on the object at runtime.
+            // The `typeof` check already ensures runtime safety.
+            if (menu && menu.getElement() && typeof (menu as any).getChildCount === 'function') {
+                const menuOptions = self.getOptions(false);
+                const childCount = (menu as any).getChildCount();
+
+                for (let i = 0; i < childCount; i++) {
+                    const menuItem = (menu as any).getChildAt(i) as Blockly.MenuItem | null;
+                    if (!menuItem) continue;
+                    
+                    // Check if menuOptions has an entry for this index to prevent errors
+                    if (i >= menuOptions.length) continue;
+                    
+                    const optionData = menuOptions[i][0]; // The image object
+                    const menuItemElement = menuItem.getElement();
+                    
+                    // Add a 'title' attribute to the menu item's DOM element for the tooltip
+                    if (menuItemElement && typeof optionData === 'object' && optionData.alt) {
+                        menuItemElement.setAttribute('title', optionData.alt);
+                    }
+                }
+            }
+        };
+        return dropdown;
+    };
+
+
+    // --- 1. TRIGGERS (Yellow) ---
+    Blockly.Blocks['event_flag'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(ICONS.flag, 64, 64, "*"))
+                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.TRIGGER);
+            this.setTooltip("Start on Green Flag");
+        }
+    };
+    // No generator needed here, handled by workspace loop
+
+    Blockly.Blocks['event_tap'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(ICONS.tap, 64, 64, "*"))
+                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.TRIGGER);
+            this.setTooltip("Start on Tap");
+        }
+    };
+
+    Blockly.Blocks['event_bump'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(ICONS.bump, 64, 64, "*"))
+                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.TRIGGER);
+            this.setTooltip("Start on Bump");
+        }
+    };
+
+    Blockly.Blocks['event_message'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField(createImageDropdownWithTooltips(ENVELOPE_OPTIONS as any), "COLOR");
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.TRIGGER);
+            this.setTooltip("On Message");
+        }
+    };
+
+    Blockly.Blocks['event_send_message'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField(createImageDropdownWithTooltips(SEND_ENVELOPE_OPTIONS as any), "COLOR");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.TRIGGER); // Still yellow like triggers
+            this.setTooltip("Send Message");
+        }
+    };
+    registerGenerator('event_send_message', (block: any) => {
+        const color = block.getFieldValue('COLOR');
+        return `await sendMessage('${color}');\n`;
+    });
+
+
+    // --- 2. MOTION (Blue) ---
+    const createMotionBlock = (type: string, cmd: string, iconUrl: string, tooltip: string, defaultVal: number = 1) => {
+        Blockly.Blocks[type] = {
+            init: function() {
+                const input = this.appendDummyInput().setAlign(Blockly.inputs.Align.CENTRE);
+                input.appendField(new Blockly.FieldImage(iconUrl, 64, 64, "*"));
+                input.appendField(new Number99Field(defaultVal), "STEPS");
+                input.appendField(new Blockly.FieldLabel('\u00A0\u00A0')); // Add spacer for uniform width
+                this.setPreviousStatement(true, null);
+                this.setNextStatement(true, null);
+                this.setColour(COLORS.MOTION);
+                this.setTooltip(tooltip);
+            }
+        };
+        registerGenerator(type, (block: any) => {
+            const steps = block.getFieldValue('STEPS');
+            return `await ${cmd}(${steps});\n`;
+        });
+    };
+
+    createMotionBlock('motion_right', 'moveRight', ICONS.right, "Move Right");
+    createMotionBlock('motion_left', 'moveLeft', ICONS.left, "Move Left");
+    createMotionBlock('motion_up', 'moveUp', ICONS.up, "Move Up");
+    createMotionBlock('motion_down', 'moveDown', ICONS.down, "Move Down");
+    createMotionBlock('motion_turn_right', 'turnRight', ICONS.turnRight, "Turn Right", 1);
+    createMotionBlock('motion_turn_left', 'turnLeft', ICONS.turnLeft, "Turn Left", 1);
+    createMotionBlock('motion_hop', 'hop', ICONS.hop, "Hop", 1);
+
+    Blockly.Blocks['motion_home'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField(new Blockly.FieldImage(ICONS.home, 64, 64, "*"))
+                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for uniform width
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.MOTION);
+            this.setTooltip("Go Home");
+        }
+    };
+    registerGenerator('motion_home', () => `await goHome();\n`);
+
+    // --- 3. LOOKS (Purple) ---
+    Blockly.Blocks['looks_say'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField(new Blockly.FieldImage(ICONS.say, 64, 64, "*"))
+                .appendField(new Blockly.FieldTextInput("Hi"), "TEXT");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.LOOKS);
+            this.setTooltip("Say");
+        }
+    };
+    registerGenerator('looks_say', (block: any) => {
+        const text = block.getFieldValue('TEXT');
+        return `await say("${text}");\n`;
+    });
+
+    Blockly.Blocks['looks_grow'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(ICONS.grow, 64, 64, "*"))
+                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.LOOKS);
+            this.setTooltip("Grow");
+        }
+    };
+    registerGenerator('looks_grow', () => `await grow();\n`);
+
+    Blockly.Blocks['looks_shrink'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(ICONS.shrink, 64, 64, "*"))
+                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.LOOKS);
+            this.setTooltip("Shrink");
+        }
+    };
+    registerGenerator('looks_shrink', () => `await shrink();\n`);
+
+    Blockly.Blocks['looks_reset_size'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(ICONS.resetSize, 64, 64, "*"))
+                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.LOOKS);
+            this.setTooltip("Reset Size");
+        }
+    };
+    registerGenerator('looks_reset_size', () => `await resetSize();\n`);
+
+    Blockly.Blocks['looks_hide'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(ICONS.hide, 64, 64, "*"))
+                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.LOOKS);
+            this.setTooltip("Hide");
+        }
+    };
+    registerGenerator('looks_hide', () => `await hide();\n`);
+
+    Blockly.Blocks['looks_show'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(ICONS.show, 64, 64, "*"))
+                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.LOOKS);
+            this.setTooltip("Show");
+        }
+    };
+    registerGenerator('looks_show', () => `await show();\n`);
+
+    // --- 4. SOUND (Green) ---
+    Blockly.Blocks['sound_pop'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(ICONS.pop, 64, 64, "*"))
+                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.SOUND);
+            this.setTooltip("Pop");
+        }
+    };
+    registerGenerator('sound_pop', () => `await playPop();\n`);
+
+    Blockly.Blocks['sound_play_recorded'] = {
+      init: function() {
+        this.appendDummyInput()
+            .setAlign(Blockly.inputs.Align.CENTRE)
+            .appendField(new Blockly.FieldImage(ICONS.record, 64, 64, '*'))
+            .appendField(new FieldSoundRecorder('1'), 'SOUND_ID');
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(COLORS.SOUND);
+        this.setTooltip('Play Recorded Sound');
+      },
+    };
+    registerGenerator('sound_play_recorded', (block: any) => {
+      const soundId = block.getFieldValue('SOUND_ID');
+      return `await playRecordedSound('recording_${soundId}');\n`;
+    });
+
+    // --- 5. CONTROL (Orange) ---
+    Blockly.Blocks['control_wait'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField(new Blockly.FieldImage(ICONS.wait, 64, 64, "*"))
+                .appendField(new Number99Field(10), "MS");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.CONTROL);
+            this.setTooltip("Wait");
+        }
+    };
+    registerGenerator('control_wait', (block: any) => {
+        const ms = block.getFieldValue('MS');
+        return `await wait(${ms});\n`;
+    });
+
+    Blockly.Blocks['control_set_speed'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField(createImageDropdownWithTooltips(SPEED_OPTIONS as any), "SPEED");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.CONTROL);
+            this.setTooltip("Set character speed");
+        }
+    };
+    registerGenerator('control_set_speed', (block: any) => {
+        const speed = block.getFieldValue('SPEED');
+        return `setSpeed('${speed}');\n`;
+    });
+
+    Blockly.Blocks['control_repeat'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField(new Blockly.FieldImage(ICONS.repeat, 64, 64, "*"))
+                .appendField(new Number99Field(4), "TIMES");
+            this.appendStatementInput("DO").setCheck(null);
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLORS.CONTROL);
+            this.setTooltip("Repeat");
+        }
+    };
+    registerGenerator('control_repeat', (block: any) => {
+        const times = block.getFieldValue('TIMES');
+        const branch = javascriptGenerator.statementToCode(block, 'DO');
+        return `for (let i = 0; i < ${times}; i++) {\n${branch}}\n`;
+    });
+
+    // --- 6. END (Red) ---
+    Blockly.Blocks['end_forever'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(ICONS.forever, 64, 64, "*"))
+                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+            this.appendStatementInput("DO").setCheck(null);
+            this.setPreviousStatement(true, null);
+            this.setColour(COLORS.END);
+            this.setTooltip("Forever");
+        }
+    };
+    registerGenerator('end_forever', (block: any) => {
+        const branch = javascriptGenerator.statementToCode(block, 'DO');
+        return `while (true) {\n${branch} await wait(1);\n}\n`;
+    });
+};
+
+initializeBlocks();
+
+// --- Toolbox Definition ---
+const GAP_SMALL = 8;
+
+const STANDARD_TOOLBOX = {
+  kind: 'categoryToolbox',
+  contents: [
+    {
+        kind: 'category',
+        name: 'Events',
+        colour: COLORS.TRIGGER,
+        cssconfig: {
+            row: 'category-row start-category-icon'
+        },
+        contents: [
+            { kind: 'block', type: 'event_flag', gap: GAP_SMALL },
+            { kind: 'block', type: 'event_tap', gap: GAP_SMALL },
+            { kind: 'block', type: 'event_bump', gap: GAP_SMALL },
+            { kind: 'block', type: 'event_message', gap: GAP_SMALL },
+            { kind: 'block', type: 'event_send_message', gap: GAP_SMALL },
+        ]
+    },
+    {
+        kind: 'category',
+        name: 'Motion',
+        colour: COLORS.MOTION,
+        cssconfig: {
+            row: 'category-row motion-category-icon'
+        },
+        contents: [
+            { kind: 'block', type: 'motion_right', gap: GAP_SMALL },
+            { kind: 'block', type: 'motion_left', gap: GAP_SMALL },
+            { kind: 'block', type: 'motion_up', gap: GAP_SMALL },
+            { kind: 'block', type: 'motion_down', gap: GAP_SMALL },
+            { kind: 'block', type: 'motion_turn_right', gap: GAP_SMALL },
+            { kind: 'block', type: 'motion_turn_left', gap: GAP_SMALL },
+            { kind: 'block', type: 'motion_hop', gap: GAP_SMALL },
+            { kind: 'block', type: 'motion_home', gap: GAP_SMALL },
+        ]
+    },
+    {
+        kind: 'category',
+        name: 'Looks',
+        colour: COLORS.LOOKS,
+        cssconfig: {
+            row: 'category-row looks-category-icon'
+        },
+        contents: [
+            { kind: 'block', type: 'looks_say', gap: GAP_SMALL },
+            { kind: 'block', type: 'looks_grow', gap: GAP_SMALL },
+            { kind: 'block', type: 'looks_shrink', gap: GAP_SMALL },
+            { kind: 'block', type: 'looks_reset_size', gap: GAP_SMALL },
+            { kind: 'block', type: 'looks_hide', gap: GAP_SMALL },
+            { kind: 'block', type: 'looks_show', gap: GAP_SMALL },
+        ]
+    },
+    {
+        kind: 'category',
+        name: 'Sound',
+        colour: COLORS.SOUND,
+        cssconfig: {
+            row: 'category-row sound-category-icon'
+        },
+        contents: [
+            { kind: 'block', type: 'sound_pop', gap: GAP_SMALL },
+            { kind: 'block', type: 'sound_play_recorded', gap: GAP_SMALL },
+        ]
+    },
+    {
+        kind: 'category',
+        name: 'Control',
+        colour: COLORS.CONTROL,
+        cssconfig: {
+            row: 'category-row control-category-icon'
+        },
+        contents: [
+            { kind: 'block', type: 'control_wait', gap: GAP_SMALL },
+            { kind: 'block', type: 'control_set_speed', gap: GAP_SMALL },
+            { kind: 'block', type: 'control_repeat', gap: GAP_SMALL },
+        ]
+    },
+    {
+        kind: 'category',
+        name: 'End',
+        colour: COLORS.END,
+        cssconfig: {
+            row: 'category-row end-category-icon'
+        },
+        contents: [
+            { kind: 'block', type: 'end_forever', gap: GAP_SMALL },
+        ]
+    }
+  ],
+};
+
+interface BlocklyEditorProps {
+  onCodeChange: (code: string) => void;
+  xml: string;
+  onXmlChange: (xml: string) => void;
+}
+
+const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlChange }) => {
+  const blocklyDiv = React.useRef<HTMLDivElement>(null);
+  const workspaceRef = React.useRef<Blockly.WorkspaceSvg | null>(null);
+
+  React.useEffect(() => {
+    if (!blocklyDiv.current || workspaceRef.current) return;
+
+    workspaceRef.current = Blockly.inject(blocklyDiv.current, {
+        toolbox: STANDARD_TOOLBOX,
+        renderer: 'tall',
+        rtl: false,
+        scrollbars: true,
+        trashcan: true,
+        sounds: false,
+        grid: {
+            spacing: 20,
+            length: 3,
+            colour: '#ccc',
+            snap: true,
+        },
+        zoom: {
+            controls: true,
+            wheel: true,
+            startScale: 1.0, 
+            maxScale: 3.0,
+            minScale: 0.3,
+            scaleSpeed: 1.2,
+        }
+    });
+    
+    const updateWorkspaceState = () => {
+      if (!workspaceRef.current) return;
+      
+      const topBlocks = workspaceRef.current.getTopBlocks(true);
+      let fullCode = '';
+
+      topBlocks.forEach(block => {
+          const nextBlock = block.getNextBlock();
+          let chainCode = '';
+          if (nextBlock) {
+              chainCode = javascriptGenerator.blockToCode(nextBlock) as string;
+          }
+          
+          switch(block.type) {
+              case 'event_flag':
+                  fullCode += `register('flag', async () => {\n${chainCode}\n});\n`; break;
+              case 'event_tap':
+                  fullCode += `register('tap', async () => {\n${chainCode}\n});\n`; break;
+              case 'event_bump':
+                  fullCode += `register('bump', async () => {\n${chainCode}\n});\n`; break;
+              case 'event_message':
+                   const msgColor = block.getFieldValue('COLOR');
+                   fullCode += `register('message_' + '${msgColor}', async () => {\n${chainCode}\n});\n`; break;
+              default: break;
+          }
+      });
+      onCodeChange(fullCode);
+
+      const newXmlDom = Blockly.Xml.workspaceToDom(workspaceRef.current);
+      const newXmlText = Blockly.Xml.domToText(newXmlDom);
+      onXmlChange(newXmlText);
+    };
+
+    workspaceRef.current.addChangeListener(updateWorkspaceState);
+    
+    // Initial load
+     if (xml && workspaceRef.current) {
+        const dom = Blockly.utils.xml.textToDom(xml);
+        Blockly.Xml.clearWorkspaceAndLoadFromXml(dom, workspaceRef.current);
+    }
+    
+    setTimeout(() => {
+        if(workspaceRef.current) Blockly.svgResize(workspaceRef.current);
+        updateWorkspaceState();
+    }, 100);
+
+
+    const handleResize = () => {
+        if(workspaceRef.current) Blockly.svgResize(workspaceRef.current);
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (workspaceRef.current) {
+        workspaceRef.current.dispose();
+        workspaceRef.current = null;
+      }
+    };
+  }, [onCodeChange, onXmlChange]);
+
+  React.useEffect(() => {
+    if (workspaceRef.current && xml) {
+        const currentXmlDom = Blockly.Xml.workspaceToDom(workspaceRef.current);
+        const currentXmlText = Blockly.Xml.domToText(currentXmlDom);
+        if (currentXmlText !== xml) {
+            const dom = Blockly.utils.xml.textToDom(xml);
+            Blockly.Xml.clearWorkspaceAndLoadFromXml(dom, workspaceRef.current);
+        }
+    }
+  }, [xml]);
+
+
+  return (
+    <div className="w-full h-full relative group bg-white">
+      <div 
+        ref={blocklyDiv} 
+        className="absolute inset-0 w-full h-full" 
+        style={{ direction: 'ltr' }} 
+      />
+    </div>
+  );
+};
+
+export default BlocklyEditor;

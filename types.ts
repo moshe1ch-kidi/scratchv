@@ -1,4 +1,4 @@
-// Represents the live, changing state of a sprite on the stage.
+ // Represents the live, changing state of a sprite on the stage.
 export interface SpriteState {
     x: number;
     y: number;

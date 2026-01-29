@@ -248,10 +248,38 @@ const App: React.FC = () => {
 
 
   const updateRuntimeSprite = useCallback((spriteId: string, updater: (prev: SpriteState) => SpriteState) => {
-    setRuntimeSpriteStates(prevStates => ({
-      ...prevStates,
-      [spriteId]: updater(prevStates[spriteId] || INITIAL_SPRITE_STATE)
-    }));
+    setRuntimeSpriteStates(prevStates => {
+      const stateBeforeUpdate = prevStates[spriteId] || INITIAL_SPRITE_STATE;
+      const stateAfterUpdate = updater(stateBeforeUpdate);
+
+      const newState = { ...stateAfterUpdate };
+
+      // A sprite is 3 units wide/tall, so its visual extent is 1.5 from its center.
+      const buffer = 1.5; 
+      const stageWidthWithBuffer = GRID_COLS + 2 * buffer;
+      const stageHeightWithBuffer = GRID_ROWS + 2 * buffer;
+
+      // Wrap X coordinate
+      if (newState.x > GRID_COLS + buffer) {
+        newState.x -= stageWidthWithBuffer;
+      }
+      if (newState.x < 1 - buffer) {
+        newState.x += stageWidthWithBuffer;
+      }
+
+      // Wrap Y coordinate
+      if (newState.y > GRID_ROWS + buffer) {
+        newState.y -= stageHeightWithBuffer;
+      }
+      if (newState.y < 1 - buffer) {
+        newState.y += stageHeightWithBuffer;
+      }
+      
+      return {
+        ...prevStates,
+        [spriteId]: newState
+      };
+    });
   }, []);
 
   const resetPageSprites = useCallback(() => {
@@ -350,28 +378,28 @@ const App: React.FC = () => {
       moveRight: async (steps: number) => {
           if (!spriteId) return;
           for (let i = 0; i < steps; i++) {
-              updateRuntimeSprite(spriteId, s => ({ ...s, x: Math.min(GRID_COLS, s.x + 1), direction: 1 }));
+              updateRuntimeSprite(spriteId, s => ({ ...s, x: s.x + 1, direction: 1 }));
               await motionDelay(BASE_MOTION_DELAY);
           }
       },
       moveLeft: async (steps: number) => {
           if (!spriteId) return;
           for (let i = 0; i < steps; i++) {
-              updateRuntimeSprite(spriteId, s => ({ ...s, x: Math.max(1, s.x - 1), direction: -1 }));
+              updateRuntimeSprite(spriteId, s => ({ ...s, x: s.x - 1, direction: -1 }));
               await motionDelay(BASE_MOTION_DELAY);
           }
       },
       moveUp: async (steps: number) => {
           if (!spriteId) return;
           for (let i = 0; i < steps; i++) {
-              updateRuntimeSprite(spriteId, s => ({ ...s, y: Math.min(GRID_ROWS, s.y + 1) }));
+              updateRuntimeSprite(spriteId, s => ({ ...s, y: s.y + 1 }));
               await motionDelay(BASE_MOTION_DELAY);
           }
       },
       moveDown: async (steps: number) => {
           if (!spriteId) return;
           for (let i = 0; i < steps; i++) {
-              updateRuntimeSprite(spriteId, s => ({ ...s, y: Math.max(1, s.y - 1) }));
+              updateRuntimeSprite(spriteId, s => ({ ...s, y: s.y - 1 }));
               await motionDelay(BASE_MOTION_DELAY);
           }
       },

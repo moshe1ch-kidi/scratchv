@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
@@ -206,6 +206,12 @@ const App: React.FC = () => {
     return initialState;
   });
   
+  // Ref to hold the latest sprite states to prevent stale state in animation loops
+  const runtimeSpriteStatesRef = useRef(runtimeSpriteStates);
+  useEffect(() => {
+    runtimeSpriteStatesRef.current = runtimeSpriteStates;
+  }, [runtimeSpriteStates]);
+
   const eventListenersRef = useRef<Record<string, { spriteId: string | null; callback: Function }[]>>({});
   const executionControllerRef = useRef({ stop: false });
   const longPressTimerRef = useRef<number | null>(null);
@@ -345,146 +351,118 @@ const App: React.FC = () => {
     await Promise.all(promises);
   }, []);
 
-  const createApiForSprite = useCallback((spriteId: string | null) => {
-    let speedMultiplier = 1; // Default speed: medium
-
-    const motionDelay = (baseMs: number) => {
-        if (executionControllerRef.current.stop) {
-            throw new Error('EXECUTION_STOPPED');
-        }
-        return new Promise(resolve => setTimeout(resolve, baseMs * speedMultiplier));
-    };
-
-    const fixedDelay = (baseMs: number) => {
-        if (executionControllerRef.current.stop) {
-            throw new Error('EXECUTION_STOPPED');
-        }
-        return new Promise(resolve => setTimeout(resolve, baseMs));
-    };
-
-    const BASE_MOTION_DELAY = 150;
-
-    return {
-      setSpeed: (speed: 'slow' | 'medium' | 'fast') => {
-          if (speed === 'slow') speedMultiplier = 2;
-          else if (speed === 'fast') speedMultiplier = 0.5;
-          else speedMultiplier = 1; // medium
-      },
-      register: (event: string, callback: Function) => {
-          if (!eventListenersRef.current[event]) eventListenersRef.current[event] = [];
-          eventListenersRef.current[event].push({ spriteId, callback });
-      },
-      wait: (units: number) => fixedDelay(units * 100),
-      moveRight: async (steps: number) => {
-          if (!spriteId) return;
-          for (let i = 0; i < steps; i++) {
-              updateRuntimeSprite(spriteId, s => ({ ...s, x: s.x + 1, direction: 1 }));
-              await motionDelay(BASE_MOTION_DELAY);
-          }
-      },
-      moveLeft: async (steps: number) => {
-          if (!spriteId) return;
-          for (let i = 0; i < steps; i++) {
-              updateRuntimeSprite(spriteId, s => ({ ...s, x: s.x - 1, direction: -1 }));
-              await motionDelay(BASE_MOTION_DELAY);
-          }
-      },
-      moveUp: async (steps: number) => {
-          if (!spriteId) return;
-          for (let i = 0; i < steps; i++) {
-              updateRuntimeSprite(spriteId, s => ({ ...s, y: s.y + 1 }));
-              await motionDelay(BASE_MOTION_DELAY);
-          }
-      },
-      moveDown: async (steps: number) => {
-          if (!spriteId) return;
-          for (let i = 0; i < steps; i++) {
-              updateRuntimeSprite(spriteId, s => ({ ...s, y: s.y - 1 }));
-              await motionDelay(BASE_MOTION_DELAY);
-          }
-      },
-      turnRight: async (steps: number) => {
-          if (!spriteId) return;
-          for (let i = 0; i < steps; i++) {
-              updateRuntimeSprite(spriteId, s => ({ ...s, rotation: s.rotation + 15 }));
-              await motionDelay(BASE_MOTION_DELAY);
-          }
-      },
-      turnLeft: async (steps: number) => {
-          if (!spriteId) return;
-          for (let i = 0; i < steps; i++) {
-              updateRuntimeSprite(spriteId, s => ({ ...s, rotation: s.rotation - 15 }));
-              await motionDelay(BASE_MOTION_DELAY);
-          }
-      },
-      hop: async (steps: number) => {
-          if (!spriteId) return;
-          const hopHeight = 0.5;
-          for (let i = 0; i < steps; i++) {
-            updateRuntimeSprite(spriteId, s => ({ ...s, y: s.y + hopHeight }));
-            await motionDelay(BASE_MOTION_DELAY * 1.5);
-            updateRuntimeSprite(spriteId, s => ({ ...s, y: s.y - hopHeight }));
-            await motionDelay(BASE_MOTION_DELAY * 1.5);
-          }
-      },
-      goHome: async () => {
-          if (!spriteId) return;
-          const targetSprite = currentPage.sprites.find(s => s.id === spriteId);
-          if(targetSprite) {
-            updateRuntimeSprite(spriteId, () => ({...targetSprite.initialState}));
-          }
-          await motionDelay(BASE_MOTION_DELAY);
-      },
-      say: async (text: string) => {
-          if (!spriteId) return;
-          updateRuntimeSprite(spriteId, s => ({ ...s, message: text }));
-          await fixedDelay(2000); 
-          updateRuntimeSprite(spriteId, s => ({ ...s, message: null }));
-      },
-      grow: async () => {
-          if (!spriteId) return;
-          updateRuntimeSprite(spriteId, s => ({ ...s, scale: s.scale + 0.2 }));
-          await motionDelay(BASE_MOTION_DELAY);
-      },
-      shrink: async () => {
-          if (!spriteId) return;
-          updateRuntimeSprite(spriteId, s => ({ ...s, scale: Math.max(0.2, s.scale - 0.2) }));
-          await motionDelay(BASE_MOTION_DELAY);
-      },
-      resetSize: async () => {
-          if (!spriteId) return;
-          updateRuntimeSprite(spriteId, s => ({ ...s, scale: 1 }));
-          await motionDelay(BASE_MOTION_DELAY);
-      },
-      hide: async () => {
-          if (!spriteId) return;
-          updateRuntimeSprite(spriteId, s => ({ ...s, visible: false }));
-      },
-      show: async () => {
-          if (!spriteId) return;
-          updateRuntimeSprite(spriteId, s => ({ ...s, visible: true }));
-      },
-      playPop: async () => {
-          if (!spriteId) return;
-          new Audio("https://codejredu.github.io/jr/scratchjr/sndlibrary/pop.mp3").play();
-          await fixedDelay(200);
-      },
-      sendMessage: async (msg: string) => {
-         await triggerEvent('message_' + msg);
-         await fixedDelay(20);
-      },
-      playRecordedSound: async (soundId: string) => {
-            const base64Audio = localStorage.getItem(soundId);
-            if (!base64Audio) return;
-            try {
-                const audio = new Audio(base64Audio);
-                const playPromise = new Promise<void>(resolve => { audio.onended = () => resolve(); });
-                audio.play();
-                await playPromise;
-            } catch(e) { console.error(`Error playing recording "${soundId}".`);}
+  const createApiForSprite = useCallback((spriteId: string) => {
+      const wait = (tenths: number) => {
+        return new Promise<void>(resolve => {
+          setTimeout(() => {
+            if (!executionControllerRef.current.stop) resolve();
+            else throw new Error('EXECUTION_STOPPED');
+          }, tenths * 100);
+        });
+      };
+      
+      const animateMovement = (duration: number, updateFn: (progress: number) => void): Promise<void> => {
+        return new Promise<void>((resolve, reject) => {
+            let start: number | null = null;
+            const step = (timestamp: number) => {
+                if (executionControllerRef.current.stop) return reject(new Error('EXECUTION_STOPPED'));
+                if (!start) start = timestamp;
+                const elapsed = timestamp - start;
+                const progress = Math.min(elapsed / duration, 1);
+                updateFn(progress);
+                if (progress < 1) {
+                    requestAnimationFrame(step);
+                } else {
+                    resolve();
+                }
+            };
+            requestAnimationFrame(step);
+        });
+      };
+      
+      const turnRight = async (steps: number) => {
+        const totalRotation = steps * 15; // 1 step = 15 degrees
+        const startState = runtimeSpriteStatesRef.current[spriteId];
+        await animateMovement(200 + Math.abs(totalRotation), (p) => {
+            updateRuntimeSprite(spriteId, s => ({...s, rotation: startState.rotation + totalRotation * p}));
+        });
+      };
+      
+      const turnLeft = async (steps: number) => {
+        const totalRotation = steps * 15;
+        const startState = runtimeSpriteStatesRef.current[spriteId];
+        await animateMovement(200 + Math.abs(totalRotation), (p) => {
+            updateRuntimeSprite(spriteId, s => ({...s, rotation: startState.rotation - totalRotation * p}));
+        });
+      };
+      
+      return {
+        moveRight: async (steps: number) => {
+          const startState = runtimeSpriteStatesRef.current[spriteId];
+          await animateMovement(steps * 200, p => updateRuntimeSprite(spriteId, s => ({...s, x: startState.x + steps * p, direction: 1})));
         },
-    };
-  }, [updateRuntimeSprite, currentPage, triggerEvent]);
+        moveLeft: async (steps: number) => {
+          const startState = runtimeSpriteStatesRef.current[spriteId];
+          await animateMovement(steps * 200, p => updateRuntimeSprite(spriteId, s => ({...s, x: startState.x - steps * p, direction: -1})));
+        },
+        moveUp: async (steps: number) => {
+          const startState = runtimeSpriteStatesRef.current[spriteId];
+          await animateMovement(steps * 200, p => updateRuntimeSprite(spriteId, s => ({...s, y: startState.y + steps * p})));
+        },
+        moveDown: async (steps: number) => {
+          const startState = runtimeSpriteStatesRef.current[spriteId];
+          await animateMovement(steps * 200, p => updateRuntimeSprite(spriteId, s => ({...s, y: startState.y - steps * p})));
+        },
+        turnRight,
+        turnLeft,
+        hop: async (height: number) => {
+            const startState = runtimeSpriteStatesRef.current[spriteId];
+            await animateMovement(500, p => {
+                const yOffset = 4 * height * (p - (p * p));
+                updateRuntimeSprite(spriteId, s => ({...s, y: startState.y + yOffset}));
+            });
+        },
+        goHome: async () => {
+            const sprite = currentPage.sprites.find(s => s.id === spriteId);
+            if (!sprite) return;
+            const startState = runtimeSpriteStatesRef.current[spriteId];
+            const targetState = sprite.initialState;
+            await animateMovement(500, p => {
+                updateRuntimeSprite(spriteId, s => ({
+                    ...s,
+                    x: startState.x + (targetState.x - startState.x) * p,
+                    y: startState.y + (targetState.y - startState.y) * p,
+                    rotation: startState.rotation + (targetState.rotation - startState.rotation) * p,
+                    scale: startState.scale + (targetState.scale - startState.scale) * p,
+                    visible: targetState.visible,
+                }));
+            });
+        },
+        say: async (message: string) => {
+          updateRuntimeSprite(spriteId, s => ({...s, message}));
+          await wait(20);
+          updateRuntimeSprite(spriteId, s => ({...s, message: null}));
+        },
+        grow: async () => { updateRuntimeSprite(spriteId, s => ({...s, scale: s.scale * 1.25})); await wait(2); },
+        shrink: async () => { updateRuntimeSprite(spriteId, s => ({...s, scale: s.scale * 0.8})); await wait(2); },
+        resetSize: async () => {
+            const sprite = currentPage.sprites.find(s => s.id === spriteId);
+            if(sprite) updateRuntimeSprite(spriteId, s => ({...s, scale: sprite.initialState.scale}));
+            await wait(2);
+        },
+        hide: async () => { updateRuntimeSprite(spriteId, s => ({...s, visible: false})); await wait(1); },
+        show: async () => { updateRuntimeSprite(spriteId, s => ({...s, visible: true})); await wait(1); },
+        playPop: async () => { new Audio("https://codejredu.github.io/jr/scratchjr/sndlibrary/pop.mp3").play(); await wait(5); },
+        playRecordedSound: async (soundKey: string) => { const audio = localStorage.getItem(soundKey); if (audio) new Audio(audio).play(); await wait(10); },
+        wait,
+        setSpeed: (speed: 'slow'|'medium'|'fast') => {},
+        sendMessage: async (color: string) => { triggerEvent(`message_${color}`); await wait(1); },
+        register: (event: string, callback: Function) => {
+            if (!eventListenersRef.current[event]) eventListenersRef.current[event] = [];
+            eventListenersRef.current[event].push({ spriteId, callback });
+        },
+      };
+    }, [currentPage.sprites, updateRuntimeSprite, triggerEvent]);
 
   const runProject = useCallback(async (startEvent: 'flag' | 'tap', targetSpriteId?: string) => {
     if (isRunning) return;

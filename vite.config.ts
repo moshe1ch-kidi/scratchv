@@ -1,18 +1,13 @@
-import path from 'path';
+ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
-
     return {
-      // וודא שיש סלאש בהתחלה ובסוף
-      base: '/moshe1ch-kidi/', 
+      // השורה הזו קריטית - היא אומרת ל-Vite להוסיף את שם המאגר לכל הקבצים
+      base: './', 
       
-      server: {
-        port: 3000,
-        host: '0.0.0.0',
-      },
       plugins: [react()],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
@@ -24,9 +19,10 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
-        // הגדרה נוספת למניעת בעיות נתיבים ב-GitHub Pages
         outDir: 'dist',
         assetsDir: 'assets',
+        // מוודא שהנתיבים יהיו יחסיים
+        emptyOutDir: true,
       }
     };
 });

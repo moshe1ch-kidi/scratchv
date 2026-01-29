@@ -84,6 +84,9 @@ registerTallRenderer();
 
 // --- Custom Field with Visual Numpad ---
 class Number99Field extends Blockly.FieldNumber {
+    // FIX: isSerializable must be a function to match the base class `FieldNumber`.
+    public isSerializable() { return true; }
+
     constructor(value: string | number) {
         super(value, 0, 99, 1);
     }

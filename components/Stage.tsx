@@ -95,6 +95,21 @@ const SpriteCharacter: React.FC<{
     const imageSize = cellSize * 3;
     const finalScaleX = state.scale * state.direction;
     const finalScaleY = state.scale;
+    const [noTransition, setNoTransition] = useState(false);
+    const prevPositionRef = useRef({ x: state.x, y: state.y });
+
+    useEffect(() => {
+        const jumpThreshold = GRID_COLS / 2; // A jump of more than half the screen width is a wrap-around
+        const dx = Math.abs(prevPositionRef.current.x - state.x);
+        const dy = Math.abs(prevPositionRef.current.y - state.y);
+
+        if (dx > jumpThreshold || dy > jumpThreshold) {
+            setNoTransition(true);
+            const timer = setTimeout(() => setNoTransition(false), 50); // A small delay to re-enable transitions
+            return () => clearTimeout(timer);
+        }
+        prevPositionRef.current = { x: state.x, y: state.y };
+    }, [state.x, state.y]);
 
     // Calculate the pixel coordinates of the sprite's CENTER based on its grid state
     const pixelCenterX = (state.x - 0.5) * cellSize;
@@ -114,16 +129,18 @@ const SpriteCharacter: React.FC<{
         wrapperStyles.transform = `translate(${dragDelta.x}px, ${dragDelta.y}px)`;
     }
 
+    const transitionClass = noTransition || isDragging ? '' : 'transition-[bottom,left] duration-100 ease-in-out';
+
     return (
         <div 
-            className={`absolute group/sprite ${isDragging ? '' : 'transition-[bottom,left] duration-100 ease-in-out'} ${sprite.type === 'image' ? 'cursor-grab' : 'cursor-pointer'}`}
+            className={`absolute group/sprite ${transitionClass} ${sprite.type === 'image' ? 'cursor-grab' : 'cursor-pointer'}`}
             style={wrapperStyles}
             onDoubleClick={onCharacterDoubleClick}
             onMouseDown={(e) => {
                 onPressStart();
                 onMouseDown(e);
             }}
-            title={`${sprite.name} (x: ${state.x}, y: ${state.y})`}
+            title={`${sprite.name} (x: ${state.x.toFixed(1)}, y: ${state.y.toFixed(1)})`}
         >
             {isMarkedForDelete && (
                 <button
@@ -217,22 +234,16 @@ const Stage: React.FC<StageProps> = ({
   }, []);
 
   useEffect(() => {
-    // This effect synchronizes the end of a drag with the parent state update.
-    // It runs after the parent component has re-rendered with the new sprite position.
-    // At that point, it is safe to clear our local "transient" drag state (the transform)
-    // without causing a visual jump.
     if (isFinishingDrag) {
-        setIsFinishingDrag(false); // Reset the flag
-        setDragDelta(null);      // Remove the CSS transform
-        dragInfo.current = null; // Mark dragging as officially over
+        setIsFinishingDrag(false);
+        setDragDelta(null);
+        dragInfo.current = null;
     }
   }, [runtimeStates, isFinishingDrag]);
   
   const pixelsToGrid = (pixelX: number, pixelY: number): { x: number; y: number } => {
     if (stageSize.cellSize <= 0) return { x: 1, y: 1};
     
-    // The pixel coordinates represent the desired CENTER of the sprite.
-    // We find the grid cell whose center is closest to this point.
     const gridX = Math.round(pixelX / stageSize.cellSize - 0.5) + 1;
     const gridY = Math.round(pixelY / stageSize.cellSize - 0.5) + 1;
     
@@ -245,9 +256,8 @@ const Stage: React.FC<StageProps> = ({
   const handleMouseDown = (e: React.MouseEvent, spriteId: string) => {
     if (!stageContentRef.current) return;
     const spriteState = runtimeStates[spriteId];
-    // FIX: Property 'type' does not exist on type 'SpriteState'. It is on the Sprite object.
     const sprite = sprites.find(s => s.id === spriteId);
-    if (!spriteState || !sprite || sprite.type === 'text') return; // Do not drag text objects
+    if (!spriteState || !sprite || sprite.type === 'text') return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -277,12 +287,10 @@ const Stage: React.FC<StageProps> = ({
 
     if (!dragInfo.current.didMove && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
         dragInfo.current.didMove = true;
-        onSpritePressEnd(); // Cancel long press timer if it's a drag
+        onSpritePressEnd();
     }
     
     if (dragInfo.current.didMove) {
-      // The `transform` property uses standard screen coordinates (y is positive downwards).
-      // No need to invert dy here.
       setDragDelta({ x: dx, y: dy });
     }
   };
@@ -292,13 +300,12 @@ const Stage: React.FC<StageProps> = ({
     window.removeEventListener('mouseup', handleMouseUp);
     document.body.classList.remove('cursor-grabbing');
 
-    onSpritePressEnd(); // Always clear timer on mouse up
+    onSpritePressEnd();
 
     if (dragInfo.current) {
         const localDragInfo = { ...dragInfo.current };
         
         if (localDragInfo.didMove) {
-            // Drag End Logic: Calculate final grid position
             const dx = e.clientX - localDragInfo.startClientX;
             const dy = e.clientY - localDragInfo.startClientY;
             
@@ -306,19 +313,15 @@ const Stage: React.FC<StageProps> = ({
             const startPixelCenterY = (localDragInfo.startSpriteY - 0.5) * stageSize.cellSize;
 
             const finalPixelCenterX = startPixelCenterX + dx;
-            const finalPixelCenterY = startPixelCenterY - dy; // Invert dy for our coordinate system
+            const finalPixelCenterY = startPixelCenterY - dy;
 
             const finalGridPos = pixelsToGrid(finalPixelCenterX, finalPixelCenterY);
 
-            // Notify parent, but DON'T clear local state yet
             onSpriteDrag(localDragInfo.id, finalGridPos);
             onSpriteDragEnd(localDragInfo.id, finalGridPos);
             
-            // Set a flag to indicate we are waiting for the prop update from the parent.
-            // The useEffect hook will then clean up the local drag state.
             setIsFinishingDrag(true);
         } else {
-            // Click Logic is synchronous, so we can clear state immediately
             if (longPressCompletedRef.current) {
                 longPressCompletedRef.current = false;
             } else if (spriteToDeleteId) {
@@ -326,18 +329,34 @@ const Stage: React.FC<StageProps> = ({
             } else if (onClick) {
                 onClick(localDragInfo.id);
             }
-            // Clear state for simple clicks
             setDragDelta(null);
             dragInfo.current = null;
         }
     }
   };
+  
+  const renderableSprites = useMemo(() => {
+    return sprites
+      .map(spriteConfig => {
+        const runtimeState = runtimeStates[spriteConfig.id];
+        if (!runtimeState) {
+          return null;
+        }
+        return {
+          key: spriteConfig.id,
+          sprite: spriteConfig,
+          state: runtimeState, // Render using the true, unwrapped state
+        };
+      })
+      .filter((s): s is { key: string; sprite: Sprite; state: SpriteState } => s !== null);
+  }, [sprites, runtimeStates]);
+
 
   return (
     <div className="w-full h-full box-border flex items-center justify-center">
         <div
             ref={stageContentRef}
-            className="w-full h-full relative select-none"
+            className="w-full h-full relative select-none overflow-hidden"
         >
             {stageSize.width > 0 && (
                 <>
@@ -347,31 +366,24 @@ const Stage: React.FC<StageProps> = ({
                         height={stageSize.height}
                         cellSize={stageSize.cellSize}
                     />
-                    {sprites.map(spriteConfig => {
-                        const runtimeState = runtimeStates[spriteConfig.id];
-                        if (!runtimeState) return null;
-                        
-                        // A sprite is considered "dragging" if dragInfo is set for it.
-                        // This remains true even during the "finishing" phase to prevent visual glitches.
-                        const isDragging = dragInfo.current?.id === spriteConfig.id;
+                    {renderableSprites.map(renderable => {
+                        const { key, sprite, state } = renderable;
+                        const isPrimary = key === sprite.id;
+                        const isDragging = dragInfo.current?.id === sprite.id;
 
                         return (
                             <SpriteCharacter 
-                                key={spriteConfig.id}
-                                sprite={spriteConfig}
-                                state={runtimeState}
+                                key={key}
+                                sprite={sprite}
+                                state={state}
                                 cellSize={stageSize.cellSize}
-                                onMouseDown={(e) => handleMouseDown(e, spriteConfig.id)}
-                                onCharacterDoubleClick={() => {
-                                  if (onSpriteDoubleClick && spriteConfig.type === 'text') {
-                                    onSpriteDoubleClick(spriteConfig.id);
-                                  }
-                                }}
-                                isMarkedForDelete={spriteToDeleteId === spriteConfig.id}
-                                onDelete={() => onDeleteSprite(spriteConfig.id)}
-                                onPressStart={() => onSpritePressStart(spriteConfig.id)}
                                 isDragging={isDragging}
                                 dragDelta={isDragging ? dragDelta : null}
+                                onMouseDown={(e) => handleMouseDown(e, sprite.id)}
+                                onCharacterDoubleClick={onSpriteDoubleClick && sprite.type === 'text' ? () => onSpriteDoubleClick(sprite.id) : () => {}}
+                                isMarkedForDelete={isPrimary && spriteToDeleteId === sprite.id}
+                                onDelete={() => onDeleteSprite(sprite.id)}
+                                onPressStart={() => onSpritePressStart(sprite.id)}
                             />
                         );
                     })}

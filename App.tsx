@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+ import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
@@ -74,20 +74,29 @@ const createNewPage = (name: string): Page => {
     };
 };
 
-// Reusable Navigation Button Component
-const NavButton: React.FC<{src: string, alt: string, onClick?: () => void, disabled?: boolean}> = ({ src, alt, onClick, disabled = false }) => (
+// Reusable Navigation Button Component (supports image src or FontAwesome icon class)
+const NavButton: React.FC<{src?: string, icon?: string, alt: string, onClick?: () => void, disabled?: boolean}> = ({ src, icon, alt, onClick, disabled = false }) => (
     <button
       onClick={onClick}
       disabled={disabled}
       className="p-1 disabled:opacity-40 disabled:cursor-not-allowed group focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-full"
       title={alt}
     >
+    {src ? (
       <img 
         src={src} 
         alt={alt} 
         className="h-20 w-20 transition-transform group-hover:scale-110 group-active:scale-95" 
         style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.2))' }}
       />
+    ) : (
+      <div 
+        className="h-20 w-20 flex items-center justify-center transition-transform group-hover:scale-110 group-active:scale-95 text-white" 
+        style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.2))' }}
+      >
+        <i className={`${icon} text-5xl`}></i>
+      </div>
+    )}
     </button>
 );
 
@@ -464,6 +473,12 @@ const App: React.FC = () => {
       };
     }, [currentPage.sprites, updateRuntimeSprite, triggerEvent]);
 
+    const handleStop = useCallback(() => {
+        console.log('--- Stopping all scripts ---');
+        executionControllerRef.current.stop = true;
+        setIsRunning(false);
+    }, []);
+
   const runProject = useCallback(async (startEvent: 'flag' | 'tap', targetSpriteId?: string) => {
     if (isRunning) return;
     executionControllerRef.current.stop = false;
@@ -512,12 +527,6 @@ const App: React.FC = () => {
 
   const handleGreenFlag = () => {
     runProject('flag');
-  };
-
-  const handleStop = () => {
-    console.log('--- Stopping all scripts ---');
-    executionControllerRef.current.stop = true;
-    setIsRunning(false);
   };
   
   const handleSpriteTap = (tappedSpriteId: string) => {
@@ -796,6 +805,84 @@ const App: React.FC = () => {
     lastActiveImageSpriteIdRef.current = null; // Clear the ref for next time
   };
 
+  const handleSaveProject = useCallback(() => {
+    try {
+        const projectData = JSON.stringify(pages, null, 2); // Pretty print for readability
+        const blob = new Blob([projectData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'project.blym'; // Custom file extension
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error("Failed to save project:", error);
+        alert('Could not save project.');
+    }
+  }, [pages]);
+
+  const handleLoadProject = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.blym,application/json';
+
+    input.onchange = (e) => {
+        const target = e.target as HTMLInputElement;
+        if (!target.files || target.files.length === 0) {
+            return;
+        }
+        const file = target.files[0];
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const fileContent = event.target?.result;
+            if (typeof fileContent !== 'string') {
+                alert('Error reading file content.');
+                return;
+            }
+            try {
+                const loadedPages: Page[] = JSON.parse(fileContent);
+                // Basic validation
+                if (Array.isArray(loadedPages) && loadedPages.length > 0 && loadedPages[0].id && loadedPages[0].sprites) {
+                    setPages(loadedPages);
+                    
+                    const firstPage = loadedPages[0];
+                    setCurrentPageId(firstPage.id);
+                    setActiveSpriteId(firstPage.sprites[0]?.id ?? null);
+                    
+                    const newRuntimeStates: Record<string, SpriteState> = {};
+                    loadedPages.forEach(p => {
+                        p.sprites.forEach(s => {
+                            newRuntimeStates[s.id] = { ...s.initialState };
+                        });
+                    });
+                    setRuntimeSpriteStates(newRuntimeStates);
+                    
+                    handleStop();
+
+                    alert('Project Loaded!');
+                } else {
+                    throw new Error('Invalid project file format.');
+                }
+            } catch (error) {
+                console.error("Failed to load project:", error);
+                alert('Could not load project. The file might be corrupted or in the wrong format.');
+            }
+        };
+        reader.onerror = () => {
+            console.error('FileReader error.');
+            alert('Error reading file.');
+        };
+        reader.readAsText(file);
+    };
+
+    document.body.appendChild(input);
+    input.click();
+    document.body.removeChild(input);
+  }, [handleStop]);
+
   return (
     <div className="flex flex-col h-screen bg-[#FDFCF8] overflow-hidden font-sans select-none">
       {isGalleryOpen && <SpriteGallery onClose={() => setIsGalleryOpen(false)} onSelect={handleAddSpriteFromGallery} onPaintNew={handleOpenPaintEditorForNew} />}
@@ -818,11 +905,14 @@ const App: React.FC = () => {
       {!isPresentationMode && (
         <nav className="h-24 px-4 flex items-center justify-center shrink-0 relative z-20 shadow-md" style={{ backgroundColor: '#4B8CC2' }}>
          <div className="flex items-center gap-4">
+            <NavButton icon="fas fa-save" alt="Save Project" onClick={handleSaveProject} />
+            <NavButton icon="fas fa-folder-open" alt="Load Project" onClick={handleLoadProject} />
+            <div className="w-px h-16 bg-slate-300/50 mx-2"></div>
             <NavButton src="https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/ui/fullOff2.svg" alt="Presentation Mode" onClick={handleTogglePresentationMode} />
             <NavButton src={showGrid ? "https://codejredu.github.io/jr/scratchjr/assets/ui/gridOff.svg" : "https://codejredu.github.io/jr/scratchjr/assets/ui/gridOn.svg"} alt="Show/Hide Grid" onClick={() => setShowGrid(prev => !prev)} />
             <NavButton src="https://codejredu.github.io/jr/scratchjr/assets/ui/scene1.svg" alt="Change Background" onClick={() => setIsBgGalleryOpen(true)} />
             <NavButton src="https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/ui/addTextPressed.svg" alt="Add Text" onClick={handleAddText} />
-            <div className="w-px h-16 bg-slate-300 mx-2"></div>
+            <div className="w-px h-16 bg-slate-300/50 mx-2"></div>
             <NavButton src="https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/ui/resetAll.svg" alt="Reset" onClick={resetPageSprites} disabled={isRunning} />
             {isRunning ? (
                 <NavButton src="https://raw.githubusercontent.com/codejredu/jr/master/scratchjr/assets/ui/stop1.svg" alt="Stop" onClick={handleStop} />

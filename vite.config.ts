@@ -3,11 +3,10 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
-    // טעינת משתני סביבה (כמו ה-API Key שלך)
     const env = loadEnv(mode, '.', '');
 
     return {
-      // הגדרת בסיס עבור GitHub Pages
+      // וודא שיש סלאש בהתחלה ובסוף
       base: '/moshe1ch-kidi/', 
       
       server: {
@@ -16,15 +15,18 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        // הזרקת המפתחות לקוד כך שיהיו נגישים דרך process.env
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
       },
       resolve: {
         alias: {
-          // קיצור דרך לשימוש ב-@ במקום נתיבים ארוכים
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        // הגדרה נוספת למניעת בעיות נתיבים ב-GitHub Pages
+        outDir: 'dist',
+        assetsDir: 'assets',
       }
     };
 });

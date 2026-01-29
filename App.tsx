@@ -493,7 +493,6 @@ const App: React.FC = () => {
     
     if (startEvent === 'flag') {
         console.log('--- Running all Green Flag scripts ---');
-        resetPageSprites();
     } else if(targetSpriteId) {
         setActiveSpriteId(targetSpriteId);
         const tappedSprite = currentPage.sprites.find(s => s.id === targetSpriteId);
@@ -531,7 +530,7 @@ const App: React.FC = () => {
             console.log('--- Script(s) finished ---');
         }
     }
-  }, [isRunning, currentPage, resetPageSprites, generateCodeForSprite, createApiForSprite, triggerEvent]);
+  }, [isRunning, currentPage, generateCodeForSprite, createApiForSprite, triggerEvent]);
 
   const handleGreenFlag = () => {
     runProject('flag');

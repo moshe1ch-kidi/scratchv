@@ -376,27 +376,62 @@
     background-position: center;
 }
 
-/* Specific icons */
+/* 
+   Specific icons & Backgrounds 
+   The request was to have the background color of the category button
+   be the same color as the category but lighter.
+*/
+
+/* Events (Yellow #FFD700) -> Lighter: #FEF9C3 */
 .start-category-icon {
     background-image: url('https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/categories/StartOn.svg');
+    background-color: #FEF9C3 !important; 
 }
-.motion-category-icon {
-    background-image: url('https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/categories/MotionOn.svg');
-}
-.looks-category-icon {
-    background-image: url('https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/categories/LooksOn.svg');
-}
-.sound-category-icon {
-    background-image: url('https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/categories/SoundOn.svg');
-}
-.control-category-icon {
-    background-image: url('https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/categories/FlowOn.svg');
-}
-.end-category-icon {
-    background-image: url('https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/categories/StopOn.svg');
+.blocklyTreeRow.blocklyTreeSelected.start-category-icon {
+    background-color: #FEF08A !important; /* Darker Yellow for selection */
 }
 
-/* Selected state - make it subtle */
-.blocklyToolboxDiv .blocklyTreeRow.blocklyTreeSelected.category-row {
-    background-color: #dbeafe !important; /* Light blue from theme */
+/* Motion (Blue #4A90E2) -> Lighter: #E0F2FE */
+.motion-category-icon {
+    background-image: url('https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/categories/MotionOn.svg');
+    background-color: #E0F2FE !important;
+}
+.blocklyTreeRow.blocklyTreeSelected.motion-category-icon {
+    background-color: #BAE6FD !important; /* Darker Blue for selection */
+}
+
+/* Looks (Purple #9013FE) -> Lighter: #F3E8FF */
+.looks-category-icon {
+    background-image: url('https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/categories/LooksOn.svg');
+    background-color: #F3E8FF !important;
+}
+.blocklyTreeRow.blocklyTreeSelected.looks-category-icon {
+    background-color: #E9D5FF !important; /* Darker Purple for selection */
+}
+
+/* Sound (Green #7ED321) -> Lighter: #DCFCE7 */
+.sound-category-icon {
+    background-image: url('https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/categories/SoundOn.svg');
+    background-color: #DCFCE7 !important;
+}
+.blocklyTreeRow.blocklyTreeSelected.sound-category-icon {
+    background-color: #BBF7D0 !important; /* Darker Green for selection */
+}
+
+/* Control (Orange #F5A623) -> Lighter: #FFEDD5 */
+.control-category-icon {
+    background-image: url('https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/categories/FlowOn.svg');
+    background-color: #FFEDD5 !important;
+}
+.blocklyTreeRow.blocklyTreeSelected.control-category-icon {
+    background-color: #FED7AA !important; /* Darker Orange for selection */
+}
+
+/* End (Red #D0021B) -> Lighter: #FEE2E2 */
+.end-category-icon {
+    background-image: url('https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/categories/StopOn.svg');
+    background-color: #FEE2E2 !important;
+}
+.blocklyTreeRow.blocklyTreeSelected.end-category-icon {
+    background-color: #FECACA !important; /* Darker Red for selection */
 }

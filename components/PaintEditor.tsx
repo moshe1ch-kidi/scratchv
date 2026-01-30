@@ -440,43 +440,97 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
             const canvasCenterX = canvasWidth / 2;
             const canvasCenterY = canvasHeight / 2;
 
+            // Target dimensions (80% of canvas roughly, or with padding)
+            const padding = 40; 
+            const availableWidth = canvasWidth - padding * 2;
+            const availableHeight = canvasHeight - padding * 2;
+
+            // Calculate scale to fit
+            let scale = 1;
+            if (bboxWidth > 0 && bboxHeight > 0) {
+                 const scaleX = availableWidth / bboxWidth;
+                 const scaleY = availableHeight / bboxHeight;
+                 scale = Math.min(scaleX, scaleY);
+            }
+            
+            // Sanity check for scale
+            if (!isFinite(scale) || scale <= 0) scale = 1;
+
+            // Check if transformation is needed (threshold to avoid jitter on already centered images)
+            // But since we are enforcing scale, we almost always update unless scale is 1 and centered.
             const dx = canvasCenterX - bboxCenterX;
             const dy = canvasCenterY - bboxCenterY;
+            
+            // We apply if there is significant movement OR scaling needed.
+            // Check diff against scale 1.0 with epsilon
+            const isScaleDifferent = Math.abs(scale - 1) > 0.01;
+            const isPosDifferent = Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1;
 
-            if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+            if (isScaleDifferent || isPosDifferent) {
                 setShapes(prevShapes => prevShapes.map(s => {
                     const newShape = { ...s };
+                    
+                    // Scale stroke width to maintain ratio
+                    newShape.strokeWidth = (newShape.strokeWidth || 0) * scale;
+
                     switch (newShape.type) {
                         case 'rect':
-                            newShape.x += dx;
-                            newShape.y += dy;
+                            newShape.width *= scale;
+                            newShape.height *= scale;
+                            newShape.x = canvasCenterX + (newShape.x - bboxCenterX) * scale;
+                            newShape.y = canvasCenterY + (newShape.y - bboxCenterY) * scale;
                             break;
                         case 'circle':
-                            newShape.cx += dx;
-                            newShape.cy += dy;
+                            newShape.rx *= scale;
+                            newShape.ry *= scale;
+                            newShape.cx = canvasCenterX + (newShape.cx - bboxCenterX) * scale;
+                            newShape.cy = canvasCenterY + (newShape.cy - bboxCenterY) * scale;
                             break;
                         case 'line':
-                            newShape.x1 += dx;
-                            newShape.y1 += dy;
-                            newShape.x2 += dx;
-                            newShape.y2 += dy;
+                            newShape.x1 = canvasCenterX + (newShape.x1 - bboxCenterX) * scale;
+                            newShape.y1 = canvasCenterY + (newShape.y1 - bboxCenterY) * scale;
+                            newShape.x2 = canvasCenterX + (newShape.x2 - bboxCenterX) * scale;
+                            newShape.y2 = canvasCenterY + (newShape.y2 - bboxCenterY) * scale;
                             break;
                         case 'path': {
                             const transform = newShape.transform || '';
                             const translateRegex = /translate\(\s*([0-9-.]+)\s*,?\s*([0-9-.]+)?\s*\)/;
-                            const match = transform.match(translateRegex);
+                            const scaleRegex = /scale\(([^)]+)\)/;
                             
                             let tx = 0, ty = 0;
-                            if (match) {
-                                tx = parseFloat(match[1]);
-                                ty = parseFloat(match[2] || '0');
+                            const tMatch = transform.match(translateRegex);
+                            if (tMatch) {
+                                tx = parseFloat(tMatch[1]);
+                                ty = parseFloat(tMatch[2] || '0');
+                            }
+                            
+                            let currentS = 1;
+                            const sMatch = transform.match(scaleRegex);
+                            if (sMatch) {
+                                currentS = parseFloat(sMatch[1]);
                             }
 
-                            const newTx = tx + dx;
-                            const newTy = ty + dy;
+                            const newTx = canvasCenterX + (tx - bboxCenterX) * scale;
+                            const newTy = canvasCenterY + (ty - bboxCenterY) * scale;
+                            const newScale = currentS * scale;
 
-                            let otherTransforms = transform.replace(translateRegex, '').trim();
-                            newShape.transform = `translate(${newTx}, ${newTy}) ${otherTransforms}`.trim();
+                            let newTransform = transform;
+                            
+                            // Replace or Append Translate
+                            if (tMatch) {
+                                newTransform = newTransform.replace(translateRegex, `translate(${newTx}, ${newTy})`);
+                            } else {
+                                newTransform = `translate(${newTx}, ${newTy}) ${newTransform}`;
+                            }
+                            
+                            // Replace or Append Scale
+                            if (sMatch) {
+                                newTransform = newTransform.replace(scaleRegex, `scale(${newScale})`);
+                            } else {
+                                newTransform = `${newTransform} scale(${newScale})`;
+                            }
+                            
+                            newShape.transform = newTransform.replace(/\s+/g, ' ').trim();
                             break;
                         }
                     }

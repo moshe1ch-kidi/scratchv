@@ -62,7 +62,7 @@ const StageGrid: React.FC<{show: boolean; width: number; height: number; cellSiz
     , [height, cellSize]);
 
     return (
-        <svg width={width} height={height} className="absolute inset-0 pointer-events-none transition-opacity duration-300" style={{ opacity: show ? 1 : 0, overflow: 'visible' }}>
+        <svg width={width} height={height} className="absolute inset-0 pointer-events-none transition-opacity duration-300 z-0" style={{ opacity: show ? 1 : 0, overflow: 'visible' }}>
             {/* Grid Lines */}
             {verticalLines}
             {horizontalLines}
@@ -341,37 +341,42 @@ const Stage: React.FC<StageProps> = ({
     <div className="w-full h-full box-border flex items-center justify-center">
         <div
             ref={stageContentRef}
-            className="w-full h-full relative select-none overflow-hidden"
+            className="w-full h-full relative select-none"
         >
             {stageSize.width > 0 && (
                 <>
+                    {/* Grid is rendered absolutely with overflow visible to show labels outside the stage area */}
                     <StageGrid 
                         show={showGrid}
                         width={stageSize.width}
                         height={stageSize.height}
                         cellSize={stageSize.cellSize}
                     />
-                    {renderableSprites.map(renderable => {
-                        const { key, sprite, state } = renderable;
-                        const isPrimary = key === sprite.id;
-                        const isDragging = dragInfo.current?.id === sprite.id;
+                    
+                    {/* Sprites are clipped to the stage area to prevent visual overflow */}
+                    <div className="absolute inset-0 overflow-hidden z-10">
+                        {renderableSprites.map(renderable => {
+                            const { key, sprite, state } = renderable;
+                            const isPrimary = key === sprite.id;
+                            const isDragging = dragInfo.current?.id === sprite.id;
 
-                        return (
-                            <SpriteCharacter 
-                                key={key}
-                                sprite={sprite}
-                                state={state}
-                                cellSize={stageSize.cellSize}
-                                isDragging={isDragging}
-                                dragDelta={isDragging ? dragDelta : null}
-                                onMouseDown={(e) => handleMouseDown(e, sprite.id)}
-                                onCharacterDoubleClick={onSpriteDoubleClick && sprite.type === 'text' ? () => onSpriteDoubleClick(sprite.id) : () => {}}
-                                isMarkedForDelete={isPrimary && spriteToDeleteId === sprite.id}
-                                onDelete={() => onDeleteSprite(sprite.id)}
-                                onPressStart={() => onSpritePressStart(sprite.id)}
-                            />
-                        );
-                    })}
+                            return (
+                                <SpriteCharacter 
+                                    key={key}
+                                    sprite={sprite}
+                                    state={state}
+                                    cellSize={stageSize.cellSize}
+                                    isDragging={isDragging}
+                                    dragDelta={isDragging ? dragDelta : null}
+                                    onMouseDown={(e) => handleMouseDown(e, sprite.id)}
+                                    onCharacterDoubleClick={onSpriteDoubleClick && sprite.type === 'text' ? () => onSpriteDoubleClick(sprite.id) : () => {}}
+                                    isMarkedForDelete={isPrimary && spriteToDeleteId === sprite.id}
+                                    onDelete={() => onDeleteSprite(sprite.id)}
+                                    onPressStart={() => onSpritePressStart(sprite.id)}
+                                />
+                            );
+                        })}
+                    </div>
                 </>
             )}
         </div>

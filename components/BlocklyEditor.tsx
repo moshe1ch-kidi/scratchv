@@ -471,6 +471,16 @@ const COLORS = {
     END: '#D0021B'      // Red
 };
 
+// Map of category names to their lighter background colors
+const CATEGORY_BG_COLORS: Record<string, string> = {
+    'Events': '#FEF9C3',  // Lighter Yellow
+    'Motion': '#E0F2FE',  // Lighter Blue
+    'Looks': '#F3E8FF',   // Lighter Purple
+    'Sound': '#DCFCE7',   // Lighter Green
+    'Control': '#FFEDD5', // Lighter Orange
+    'End': '#FEE2E2',     // Lighter Red
+};
+
 // Graphical Envelopes for Receive block
 const ENVELOPE_OPTIONS = [
     [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Orange.svg', 'width': 60, 'height': 50, 'alt': 'Orange'}, 'orange'],
@@ -1014,6 +1024,29 @@ const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlC
         }
     });
     workspaceRef.current = workspace;
+    
+    // --- Added: Change Flyout background color on category selection ---
+    const onToolboxEvent = (event: Blockly.Events.Abstract) => {
+        // Safe access to the event type if typescript definitions are missing it
+        const typeName = (Blockly.Events as any).TOOLBOX_ITEM_SELECT || 'toolbox_item_select';
+        
+        if (event.type === typeName) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const newItemName = (event as any).newItem;
+            if (newItemName && CATEGORY_BG_COLORS[newItemName]) {
+                const flyout = workspace.getFlyout();
+                if (flyout) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const flyoutInstance = flyout as any;
+                    // Try to access the SVG background element directly since setBackgroundColour doesn't exist on IFlyout
+                    if (flyoutInstance.svgBackground_) {
+                         flyoutInstance.svgBackground_.style.fill = CATEGORY_BG_COLORS[newItemName];
+                    }
+                }
+            }
+        }
+    };
+    workspace.addChangeListener(onToolboxEvent);
     
     const updateWorkspaceState = (event: Blockly.Events.Abstract) => {
       // Only update state on user interactions, not programmatic loads.

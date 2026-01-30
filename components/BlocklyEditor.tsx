@@ -421,9 +421,12 @@ class FieldSoundRecorder extends Blockly.Field {
         draw();
     }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-Blockly.fieldRegistry.register('field_sound_recorder', FieldSoundRecorder as any);
 
+// Check if already registered to avoid errors on hot reload
+if (!Blockly.registry.getClass(Blockly.registry.Type.FIELD, 'field_sound_recorder')) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Blockly.fieldRegistry.register('field_sound_recorder', FieldSoundRecorder as any);
+}
 
 // --- Icons (Base64 encoded SVGs) ---
 const ICONS = {

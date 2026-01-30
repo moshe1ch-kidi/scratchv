@@ -15,6 +15,14 @@
     display: none;
 }
 
+/* --- FIX: Click-through for Icons --- */
+/* This forces mouse clicks on the SVG images inside blocks to "pass through" 
+   to the block path underneath. This ensures the 'Click to Run' logic 
+   works even if the user clicks directly on the icon. */
+.blocklyDraggable image {
+    pointer-events: none !important;
+}
+
 /* Fix input visibility during editing */
 .blocklyHtmlInput {
   background-color: #ffffff !important;

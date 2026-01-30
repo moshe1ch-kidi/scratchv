@@ -1,4 +1,4 @@
-   import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+  import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
@@ -667,6 +667,56 @@ const App: React.FC = () => {
         })};
     }));
   };
+
+  // --- DUPLICATION LOGIC START ---
+  const handleDuplicateSprite = (e: React.MouseEvent, spriteId: string) => {
+    e.stopPropagation(); // Prevent card selection logic
+    const page = pages.find(p => p.id === currentPageId);
+    if (!page) return;
+    const sprite = page.sprites.find(s => s.id === spriteId);
+    if (!sprite) return;
+
+    // Generate new name (e.g., Cat -> Cat 1, Cat 1 -> Cat 2)
+    let newName = sprite.name;
+    const match = newName.match(/^(.*?)(\d+)$/);
+    if (match) {
+        const base = match[1];
+        const num = parseInt(match[2], 10);
+        newName = `${base}${num + 1}`;
+    } else {
+        newName = `${newName} 1`;
+    }
+
+    // Generate new ID and slight offset position
+    const newId = `sprite-${Date.now()}-${Math.random()}`;
+    const newSprite: Sprite = {
+        ...sprite,
+        id: newId,
+        name: newName,
+        initialState: {
+            ...sprite.initialState,
+            // Simple offset logic: +1 right, +1 down, clamped to grid
+            x: Math.min(GRID_COLS, sprite.initialState.x + 1),
+            y: Math.min(GRID_ROWS, sprite.initialState.y + 1)
+        }
+    };
+
+    // Update Pages State
+    setPages(currentPages => currentPages.map(p => {
+        if (p.id !== currentPageId) return p;
+        return { ...p, sprites: [...p.sprites, newSprite] };
+    }));
+
+    // Update Runtime State
+    setRuntimeSpriteStates(currentStates => ({
+        ...currentStates,
+        [newId]: newSprite.initialState
+    }));
+
+    // Set as Active
+    setActiveSpriteId(newId);
+  };
+  // --- DUPLICATION LOGIC END ---
   
   const handleOpenPaintEditorForNew = () => {
       setIsGalleryOpen(false);
@@ -1020,7 +1070,8 @@ const App: React.FC = () => {
                   <div className="flex flex-col h-full bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
                       <div className="flex-1 flex overflow-hidden">
                             <div className="flex-1 flex flex-col min-w-0">
-                              <div className="h-36 bg-[#F9F9F9] border-b border-slate-200 flex items-center px-4 gap-4 overflow-x-auto relative">
+                              {/* --- MODIFIED SPRITE LIST SECTION START --- */}
+                              <div className="h-48 bg-[#F9F9F9] border-b border-slate-200 flex items-center px-4 gap-4 overflow-x-auto relative">
                                   <div className="text-xs font-bold text-slate-400 absolute top-1 left-2">Objects</div>
                                   {currentPage.sprites.filter(s => s.type === 'image').map(sprite => {
                                       const isSvg = sprite.costume.endsWith('.svg') || sprite.costume.startsWith('data:image/svg+xml');
@@ -1044,7 +1095,7 @@ const App: React.FC = () => {
                                             onMouseLeave={handlePressEnd}
                                             onTouchStart={() => handleSpritePressStart(sprite.id)}
                                             onTouchEnd={handlePressEnd}
-                                            className={`w-24 h-28 bg-white border-2 rounded-lg shadow-sm flex flex-col items-center justify-between p-1 relative cursor-pointer min-w-[96px] ${ activeSpriteId === sprite.id ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-200' }`}
+                                            className={`w-24 h-40 bg-white border-2 rounded-lg shadow-sm flex flex-col items-center p-1 relative cursor-pointer min-w-[96px] ${ activeSpriteId === sprite.id ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-200' }`}
                                           >
                                               {spriteToDeleteId === sprite.id && (
                                                   <button
@@ -1058,29 +1109,52 @@ const App: React.FC = () => {
                                                     <i className="fas fa-times"></i>
                                                   </button>
                                               )}
-                                              {activeSpriteId === sprite.id && isSvg && (
-                                                  <button 
-                                                      onClick={(e) => { e.stopPropagation(); handleEditSprite(sprite.id); }} 
-                                                      className="absolute top-0 right-0 w-5 h-5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-full flex items-center justify-center text-[10px] shadow z-10"
-                                                      title="Edit Sprite"
-                                                  >
-                                                      <i className="fas fa-paint-brush"></i>
-                                                  </button>
-                                              )}
-                                              <img src={sprite.costume} alt={sprite.name} className="w-16 h-16 object-contain" />
                                               
-                                              {activeSpriteId === sprite.id ? (
-                                                  <input type="text" value={sprite.name} onChange={(e) => handleSpriteNameChange(sprite.id, e.target.value)} onClick={(e) => e.stopPropagation()} className="text-xs font-bold text-slate-700 text-center w-full bg-blue-50 border-none outline-none rounded-sm" maxLength={15} autoFocus />
-                                              ) : (
-                                                  <span className="text-xs font-bold text-slate-600 mt-1 truncate w-full text-center">{sprite.name}</span>
-                                              )}
+                                              {/* Image Container - Grows to fill space */}
+                                              <div className="flex-1 w-full flex items-center justify-center">
+                                                  <img src={sprite.costume} alt={sprite.name} className="max-w-[3.5rem] max-h-[3.5rem] object-contain" />
+                                              </div>
+                                              
+                                              {/* Name Input/Label */}
+                                              <div className="w-full h-6 flex items-center justify-center mb-1">
+                                                  {activeSpriteId === sprite.id ? (
+                                                      <input type="text" value={sprite.name} onChange={(e) => handleSpriteNameChange(sprite.id, e.target.value)} onClick={(e) => e.stopPropagation()} className="text-xs font-bold text-slate-700 text-center w-full bg-blue-50 border-none outline-none rounded-sm px-1" maxLength={15} autoFocus />
+                                                  ) : (
+                                                      <span className="text-xs font-bold text-slate-600 truncate w-full text-center px-1">{sprite.name}</span>
+                                                  )}
+                                              </div>
+
+                                              {/* Action Buttons Row - Fixed height at bottom */}
+                                              <div className="w-full h-8 flex items-center justify-center gap-2">
+                                                  {activeSpriteId === sprite.id && (
+                                                    <>
+                                                        {isSvg && (
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); handleEditSprite(sprite.id); }} 
+                                                                className="w-7 h-7 bg-yellow-400 hover:bg-yellow-500 text-white rounded-full flex items-center justify-center text-xs shadow transition-transform hover:scale-110"
+                                                                title="Edit Sprite"
+                                                            >
+                                                                <i className="fas fa-paint-brush"></i>
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={(e) => handleDuplicateSprite(e, sprite.id)}
+                                                            className="w-7 h-7 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center text-xs shadow transition-transform hover:scale-110"
+                                                            title="Duplicate"
+                                                        >
+                                                            <i className="fas fa-copy"></i>
+                                                        </button>
+                                                    </>
+                                                  )}
+                                              </div>
                                           </div>
                                       )
                                   })}
-                                  <div onClick={() => setIsGalleryOpen(true)} title="Add Sprite from Gallery" className="w-24 h-28 border-2 border-dashed border-blue-300 rounded-lg flex flex-col items-center justify-center text-blue-500 hover:bg-blue-50 cursor-pointer min-w-[96px]">
+                                  <div onClick={() => setIsGalleryOpen(true)} title="Add Sprite from Gallery" className="w-24 h-40 border-2 border-dashed border-blue-300 rounded-lg flex flex-col items-center justify-center text-blue-500 hover:bg-blue-50 cursor-pointer min-w-[96px]">
                                       <i className="fas fa-plus text-2xl"></i>
                                   </div>
                               </div>
+                              {/* --- MODIFIED SPRITE LIST SECTION END --- */}
 
                               <div className="flex-1 bg-[#e0e0e0] p-8 flex items-center justify-center relative">
                                   <div className="w-full aspect-[4/3] bg-white border-[4px] border-slate-300 shadow-xl rounded-xl relative bg-cover bg-center" style={{ backgroundImage: currentPage.background, backgroundColor: currentPage.background.startsWith('url') ? '#ffffff' : currentPage.background }}>

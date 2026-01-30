@@ -118,7 +118,7 @@ const SpriteCharacter: React.FC<{
 
     return (
         <div 
-            className={`absolute group/sprite ${sprite.type === 'image' ? 'cursor-grab' : 'cursor-pointer'}`}
+            className={`absolute group/sprite cursor-grab`}
             style={wrapperStyles}
             onDoubleClick={onCharacterDoubleClick}
             onMouseDown={(e) => {
@@ -156,7 +156,7 @@ const SpriteCharacter: React.FC<{
                 
                 {sprite.type === 'text' && sprite.content ? (
                     <div
-                      className="font-bold drop-shadow-lg text-center whitespace-pre-wrap break-words"
+                      className="font-bold drop-shadow-lg text-center whitespace-pre-wrap break-words select-none"
                       style={{
                         color: sprite.color || '#000000',
                         fontSize: `${1 + (sprite.fontSize || 2) * 0.8}rem`,
@@ -242,7 +242,7 @@ const Stage: React.FC<StageProps> = ({
     if (!stageContentRef.current) return;
     const spriteState = runtimeStates[spriteId];
     const sprite = sprites.find(s => s.id === spriteId);
-    if (!spriteState || !sprite || sprite.type === 'text') return;
+    if (!spriteState || !sprite) return;
     
     e.preventDefault();
     e.stopPropagation();

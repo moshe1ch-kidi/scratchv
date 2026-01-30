@@ -32,11 +32,14 @@ const javascriptGenerator = getJavascriptGenerator();
 // Helper to safely register block generators
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const registerGenerator = (blockName: string, generatorFn: (block: any) => string | [string, any]) => {
-    if (!javascriptGenerator) return;
-    if (javascriptGenerator.forBlock) {
-        javascriptGenerator.forBlock[blockName] = generatorFn;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const generator = javascriptGenerator as any;
+    if (!generator) return;
+    
+    if (generator.forBlock) {
+        generator.forBlock[blockName] = generatorFn;
     } else {
-        try { javascriptGenerator[blockName] = generatorFn; } catch (e) {}
+        try { generator[blockName] = generatorFn; } catch (e) {}
     }
 };
 
@@ -551,6 +554,12 @@ const initializeBlocks = () => {
 
 
     // --- 1. TRIGGERS (Yellow) ---
+    // Registers Pass-through generators for Click-to-Run logic
+    registerGenerator('event_flag', () => '');
+    registerGenerator('event_tap', () => '');
+    registerGenerator('event_bump', () => '');
+    registerGenerator('event_message', () => '');
+
     Blockly.Blocks['event_flag'] = {
         init: function() {
             this.appendDummyInput()
@@ -634,7 +643,7 @@ const initializeBlocks = () => {
             }
         };
         registerGenerator(type, (block: any) => {
-            const steps = block.getFieldValue('STEPS');
+            const steps = Number(block.getFieldValue('STEPS')) || 0;
             return `await ${cmd}(${steps});\n`;
         });
     };
@@ -801,7 +810,7 @@ const initializeBlocks = () => {
         }
     };
     registerGenerator('control_wait', (block: any) => {
-        const ms = block.getFieldValue('MS');
+        const ms = Number(block.getFieldValue('MS')) || 0;
         return `await wait(${ms});\n`;
     });
 
@@ -835,8 +844,10 @@ const initializeBlocks = () => {
         }
     };
     registerGenerator('control_repeat', (block: any) => {
-        const times = block.getFieldValue('TIMES');
-        const branch = javascriptGenerator.statementToCode(block, 'DO');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const generator = javascriptGenerator as any;
+        const times = Number(block.getFieldValue('TIMES')) || 0;
+        const branch = generator ? generator.statementToCode(block, 'DO') : '';
         return `for (let i = 0; i < ${times}; i++) {\n${branch}}\n`;
     });
 
@@ -855,12 +866,12 @@ const initializeBlocks = () => {
         }
     };
     registerGenerator('end_forever', (block: any) => {
-        const branch = javascriptGenerator.statementToCode(block, 'DO');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const generator = javascriptGenerator as any;
+        const branch = generator ? generator.statementToCode(block, 'DO') : '';
         return `while (true) {\n${branch} await wait(1);\n}\n`;
     });
 };
-
-initializeBlocks();
 
 // --- Toolbox Definition ---
 const GAP_SMALL = 8;
@@ -960,20 +971,24 @@ interface BlocklyEditorProps {
   onCodeChange: (code: string) => void;
   xml: string;
   onXmlChange: (xml: string) => void;
+  onRunBlock: (code: string) => void;
 }
 
-const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlChange }) => {
+const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlChange, onRunBlock }) => {
   const blocklyDiv = React.useRef<HTMLDivElement>(null);
   const workspaceRef = React.useRef<Blockly.WorkspaceSvg | null>(null);
 
   // Use a ref to hold the latest callbacks to prevent stale closures in the listener
-  const callbacksRef = React.useRef({ onCodeChange, onXmlChange });
+  const callbacksRef = React.useRef({ onCodeChange, onXmlChange, onRunBlock });
   React.useEffect(() => {
-    callbacksRef.current = { onCodeChange, onXmlChange };
-  }, [onCodeChange, onXmlChange]);
+    callbacksRef.current = { onCodeChange, onXmlChange, onRunBlock };
+  }, [onCodeChange, onXmlChange, onRunBlock]);
 
   // Effect for workspace setup and teardown, runs only once on mount.
   React.useEffect(() => {
+    // Ensure blocks are initialized when the component mounts
+    initializeBlocks();
+
     if (!blocklyDiv.current) return;
 
     const workspace = Blockly.inject(blocklyDiv.current, {
@@ -1007,11 +1022,16 @@ const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlC
       const topBlocks = workspaceRef.current.getTopBlocks(true);
       let fullCode = '';
 
+      // Force generator initialization with workspace context
+      if (javascriptGenerator && typeof (javascriptGenerator as any).init === 'function') {
+        (javascriptGenerator as any).init(workspaceRef.current);
+      }
+
       topBlocks.forEach(block => {
           const nextBlock = block.getNextBlock();
           let chainCode = '';
           if (nextBlock) {
-              chainCode = javascriptGenerator.blockToCode(nextBlock) as string;
+              chainCode = (javascriptGenerator as any).blockToCode(nextBlock) as string;
           }
           
           switch(block.type) {
@@ -1034,7 +1054,34 @@ const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlC
       callbacksRef.current.onXmlChange(newXmlText);
     };
 
+    const onBlockClick = (event: Blockly.Events.Abstract) => {
+      // Don't run if workspace is currently being dragged
+      if (workspaceRef.current?.isDragging()) return;
+
+      // Robust check for Click event across versions
+      const isClick = event.type === Blockly.Events.CLICK || event.type === 'click';
+      
+      if (isClick && (event as any).blockId) {
+          const blockId = (event as any).blockId;
+          const block = workspaceRef.current?.getBlockById(blockId);
+          // Don't run if it's in the flyout (toolbox)
+          if (block && !block.workspace.isFlyout) {
+              // Ensure generator initialized
+              if (javascriptGenerator && typeof (javascriptGenerator as any).init === 'function') {
+                  (javascriptGenerator as any).init(workspaceRef.current!);
+              }
+
+              // Generate code for this block and the connected chain
+              const code = (javascriptGenerator as any).blockToCode(block);
+              if (code && typeof code === 'string') {
+                  callbacksRef.current.onRunBlock(code);
+              }
+          }
+      }
+    };
+
     workspace.addChangeListener(updateWorkspaceState);
+    workspace.addChangeListener(onBlockClick);
     
     const handleResize = () => {
         if(workspace) Blockly.svgResize(workspace);

@@ -1,4 +1,4 @@
- import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+   import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
@@ -319,6 +319,11 @@ const App: React.FC = () => {
         Blockly.Xml.domToWorkspace(dom, workspace);
         const topBlocks = workspace.getTopBlocks(true);
 
+        // Ensure generator initialized
+        if (javascriptGenerator && typeof javascriptGenerator.init === 'function') {
+            javascriptGenerator.init(workspace);
+        }
+
         topBlocks.forEach(block => {
             const nextBlock = block.getNextBlock();
             let chainCode = '';
@@ -372,13 +377,24 @@ const App: React.FC = () => {
       
       const animateMovement = (duration: number, updateFn: (progress: number) => void): Promise<void> => {
         return new Promise<void>((resolve, reject) => {
+            // FIX: Ensure duration is at least 1 frame (16ms) to prevent div-by-zero or near-instant completion issues
+            const safeDuration = Math.max(duration, 16); 
+            
             let start: number | null = null;
             const step = (timestamp: number) => {
                 if (executionControllerRef.current.stop) return reject(new Error('EXECUTION_STOPPED'));
                 if (!start) start = timestamp;
                 const elapsed = timestamp - start;
-                const progress = Math.min(elapsed / duration, 1);
-                updateFn(progress);
+                const progress = Math.min(elapsed / safeDuration, 1);
+                
+                // Safely update
+                try {
+                    updateFn(progress);
+                } catch(e) {
+                    console.error("Animation update failed", e);
+                    return reject(e);
+                }
+
                 if (progress < 1) {
                     requestAnimationFrame(step);
                 } else {
@@ -461,7 +477,16 @@ const App: React.FC = () => {
         },
         hide: async () => { updateRuntimeSprite(spriteId, s => ({...s, visible: false})); await wait(1); },
         show: async () => { updateRuntimeSprite(spriteId, s => ({...s, visible: true})); await wait(1); },
-        playPop: async () => { new Audio("https://codejredu.github.io/jr/scratchjr/sndlibrary/pop.mp3").play(); await wait(5); },
+        playPop: async () => { 
+            try {
+                // Using valid raw github content URL for the pop sound to ensure playback
+                const audio = new Audio("https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/main/pop.mp3");
+                await audio.play();
+            } catch(e) {
+                console.warn("Failed to play pop sound", e);
+            }
+            await wait(5); 
+        },
         playRecordedSound: async (soundKey: string) => { const audio = localStorage.getItem(soundKey); if (audio) new Audio(audio).play(); await wait(10); },
         wait,
         setSpeed: (speed: 'slow'|'medium'|'fast') => {},
@@ -500,10 +525,17 @@ const App: React.FC = () => {
             const code = generateCodeForSprite(sprite);
             if (code) {
                 const spriteApi = createApiForSprite(sprite.id);
-                // Deconstruct to make API functions available in eval's scope
-                const { register, wait, moveRight, moveLeft, moveUp, moveDown, turnRight, turnLeft, hop, goHome, say, grow, shrink, resetSize, hide, show, playPop, sendMessage, playRecordedSound, setSpeed } = spriteApi;
-                // eslint-disable-next-line no-eval
-                await eval(`(async () => { ${code} })();`);
+                const apiKeys = Object.keys(spriteApi);
+                const apiValues = Object.values(spriteApi);
+                
+                // Execute in safe scope without 'with' statement
+                // eslint-disable-next-line no-new-func
+                const runCode = new Function(...apiKeys, `
+                  return (async () => {
+                    ${code}
+                  })();
+                `);
+                await runCode(...apiValues);
             }
         }
 
@@ -524,6 +556,41 @@ const App: React.FC = () => {
         }
     }
   }, [isRunning, currentPage, generateCodeForSprite, createApiForSprite, triggerEvent]);
+
+  // Handler for clicking a block directly in the workspace to run it
+  const handleRunBlock = useCallback(async (code: string) => {
+    if (!activeSpriteId || !code.trim()) return;
+
+    // We allow running individual blocks even if the main project is running or stopped.
+    // Ensure the execution controller allows it.
+    executionControllerRef.current.stop = false;
+    
+    try {
+        const spriteApi = createApiForSprite(activeSpriteId);
+        const apiKeys = Object.keys(spriteApi);
+        const apiValues = Object.values(spriteApi);
+        
+        console.log("--- Running clicked block ---", code);
+        
+        // Use new Function with destructured arguments instead of 'with'
+        // This avoids Strict Mode errors.
+        // eslint-disable-next-line no-new-func
+        const runBlock = new Function(...apiKeys, `
+            return (async () => {
+                ${code}
+            })();
+        `);
+        
+        await runBlock(...apiValues);
+
+    } catch (error) {
+        if (error instanceof Error && error.message === 'EXECUTION_STOPPED') {
+             console.log('--- Block execution stopped ---');
+        } else {
+             console.error("Error running block:", error);
+        }
+    }
+  }, [activeSpriteId, createApiForSprite]);
 
   const handleGreenFlag = () => {
     runProject('flag');
@@ -943,7 +1010,7 @@ const App: React.FC = () => {
                           Scripts cannot be added to text objects.
                       </div>
                   ) : (
-                      <BlocklyEditor onCodeChange={setGeneratedCode} xml={currentWorkspaceXml} onXmlChange={handleXmlChange} />
+                      <BlocklyEditor onCodeChange={setGeneratedCode} xml={currentWorkspaceXml} onXmlChange={handleXmlChange} onRunBlock={handleRunBlock} />
                   )}
               </div>
             </div>

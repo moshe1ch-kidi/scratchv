@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import * as En from 'blockly/msg/en';
 import './BlocklyStyles.css';
+import { Page } from '../types';
 
 // Initialize locale
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -463,6 +464,7 @@ const ICONS = {
 
     // End
     forever: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Forever.svg",
+    gotoPage: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/GoToPage.svg",
 };
 
 const COLORS = {
@@ -512,6 +514,35 @@ const SPEED_OPTIONS = [
     [{ 'src': 'https://codejr.org/scratchjr/assets/blockicons/speed2.svg', 'width': 60, 'height': 50, 'alt': 'Fast' }, 'fast'],
 ];
 
+// Generate dynamic SVG icon for pages with number overlay
+const generatePageIcon = (background: string, number: number) => {
+    let bgElement = '';
+    
+    // Check if background is a data URI image or looks like a URL (which we likely pre-converted to base64)
+    // We treat anything starting with 'data:image' or 'http' as an image source for <image>.
+    if (background.trim().startsWith('data:image') || background.trim().startsWith('http')) {
+        bgElement = `<image href="${background}" x="0" y="0" width="60" height="50" preserveAspectRatio="xMidYMid slice" />`;
+    } else {
+        // Assume color
+        const fillColor = background || '#ffffff';
+        bgElement = `<rect x="0" y="0" width="60" height="50" rx="4" fill="${fillColor}" stroke="#cbd5e1" stroke-width="2"/>`;
+    }
+
+    // SVG with background and a large, high-contrast number overlay
+    const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="60" height="50" viewBox="0 0 60 50">
+        ${bgElement}
+        <!-- Semi-transparent overlay to ensure text contrast -->
+        <rect x="15" y="10" width="30" height="30" rx="15" fill="rgba(255,255,255,0.7)" />
+        <text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="900" fill="#334155" stroke="white" stroke-width="0.5">${number}</text>
+    </svg>`;
+    
+    return `data:image/svg+xml;base64,${btoa(svg)}`;
+};
+
+// Dynamic provider for page options
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let getPageOptions: () => any[][] = () => [[{src: generatePageIcon('#ffffff', 1), width: 60, height: 50, alt: 'Page 1'}, '1']];
 
 const initializeBlocks = () => {
     /**
@@ -884,6 +915,22 @@ const initializeBlocks = () => {
         const branch = generator ? generator.statementToCode(block, 'DO') : '';
         return `while (true) {\n${branch} await wait(1);\n}\n`;
     });
+
+    // --- Go to Page (Red) ---
+    Blockly.Blocks['end_goto_page'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField(new Blockly.FieldDropdown(() => getPageOptions() as any), "PAGE_ID");
+            this.setPreviousStatement(true, null);
+            this.setColour(COLORS.END);
+            this.setTooltip("Go to Page");
+        }
+    };
+    registerGenerator('end_goto_page', (block: any) => {
+        const pageId = block.getFieldValue('PAGE_ID');
+        return `await goToPage('${pageId}');\n`;
+    });
 };
 
 // --- Toolbox Definition ---
@@ -985,17 +1032,93 @@ interface BlocklyEditorProps {
   xml: string;
   onXmlChange: (xml: string) => void;
   onRunBlock: (code: string) => void;
+  pages: Page[];
 }
 
-const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlChange, onRunBlock }) => {
+const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlChange, onRunBlock, pages }) => {
   const blocklyDiv = React.useRef<HTMLDivElement>(null);
   const workspaceRef = React.useRef<Blockly.WorkspaceSvg | null>(null);
+  // Cache for fetched images to avoid repeated fetches
+  const imageCacheRef = useRef<Record<string, string>>({});
 
   // Use a ref to hold the latest callbacks to prevent stale closures in the listener
   const callbacksRef = React.useRef({ onCodeChange, onXmlChange, onRunBlock });
   React.useEffect(() => {
     callbacksRef.current = { onCodeChange, onXmlChange, onRunBlock };
   }, [onCodeChange, onXmlChange, onRunBlock]);
+
+  // Update page options whenever pages change
+  React.useEffect(() => {
+    let isMounted = true;
+
+    const generateOptions = async () => {
+        const newOptions = await Promise.all(pages.map(async (p, i) => {
+            const pageNum = i + 1;
+            let bgSource = p.background; // Default to CSS value (e.g., #fff or url(...))
+
+            // Check if it is a URL background
+            const urlMatch = p.background.match(/^url\(['"]?(.+?)['"]?\)$/);
+            if (urlMatch) {
+                const url = urlMatch[1];
+                if (imageCacheRef.current[url]) {
+                    // Use cached Base64
+                    bgSource = imageCacheRef.current[url];
+                } else {
+                    try {
+                        const res = await fetch(url);
+                        const blob = await res.blob();
+                        const base64 = await new Promise<string>((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result as string);
+                            reader.readAsDataURL(blob);
+                        });
+                        imageCacheRef.current[url] = base64;
+                        bgSource = base64;
+                    } catch (e) {
+                        console.warn("Failed to load page bg for icon", e);
+                        // Fallback to a placeholder color if fetch fails
+                        // We cannot use the URL directly in SVG data URI due to security blocking
+                        bgSource = '#e2e8f0'; 
+                    }
+                }
+            }
+
+            return [
+                {
+                    src: generatePageIcon(bgSource, pageNum),
+                    width: 60,
+                    height: 50,
+                    alt: `Page ${pageNum}`
+                },
+                p.id
+            ];
+        }));
+
+        if (isMounted) {
+            // Update the global provider function
+            getPageOptions = () => newOptions;
+        }
+    };
+
+    generateOptions();
+
+    return () => { isMounted = false; };
+  }, [pages]);
+
+  // Update toolbox dynamically
+  React.useEffect(() => {
+      if (!workspaceRef.current) return;
+      
+      const newToolbox = JSON.parse(JSON.stringify(STANDARD_TOOLBOX));
+      if (pages.length > 1) {
+           // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           const endCategory = newToolbox.contents.find((c: any) => c.name === 'End');
+           if (endCategory) {
+               endCategory.contents.push({ kind: 'block', type: 'end_goto_page', gap: GAP_SMALL });
+           }
+      }
+      workspaceRef.current.updateToolbox(newToolbox);
+  }, [pages]);
 
   // Effect for workspace setup and teardown, runs only once on mount.
   React.useEffect(() => {
@@ -1052,8 +1175,9 @@ const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlC
     workspace.addChangeListener(onToolboxEvent);
     
     const updateWorkspaceState = (event: Blockly.Events.Abstract) => {
-      // Only update state on user interactions, not programmatic loads.
-      if (!event.isUiEvent || !workspaceRef.current) return;
+      // Ignore UI events (clicks, scrolls, selection changes) and only capture model changes
+      if (event.isUiEvent) return;
+      if (!workspaceRef.current) return;
       
       const topBlocks = workspaceRef.current.getTopBlocks(true);
       let fullCode = '';

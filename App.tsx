@@ -1,4 +1,4 @@
-  import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+ import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
@@ -226,6 +226,7 @@ const App: React.FC = () => {
   const longPressTimerRef = useRef<number | null>(null);
   const longPressCompleted = useRef(false);
   const lastActiveImageSpriteIdRef = useRef<string | null>(null);
+  const isPageSwitchingRef = useRef(false);
   
   const currentPage = useMemo(() => pages.find(p => p.id === currentPageId)!, [pages, currentPageId]);
   const activeSprite = useMemo(() => currentPage.sprites.find(s => s.id === activeSpriteId), [currentPage, activeSpriteId]);
@@ -365,6 +366,10 @@ const App: React.FC = () => {
     await Promise.all(promises);
   }, []);
 
+  // Forward declaration for runProject to be used inside createApiForSprite
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const runProjectRef = useRef<(startEvent: 'flag' | 'tap', targetSpriteId?: string) => Promise<void>>(async () => {});
+
   const createApiForSprite = useCallback((spriteId: string) => {
       const wait = (tenths: number) => {
         return new Promise<void>(resolve => {
@@ -495,8 +500,24 @@ const App: React.FC = () => {
             if (!eventListenersRef.current[event]) eventListenersRef.current[event] = [];
             eventListenersRef.current[event].push({ spriteId, callback });
         },
+        goToPage: async (pageId: string) => {
+            const targetPage = pages.find(p => p.id === pageId);
+            if (!targetPage) return;
+            
+            console.log(`--- Switching to Page: ${targetPage.name} ---`);
+            
+            // Mark for auto-run on next render
+            isPageSwitchingRef.current = true;
+            
+            // Stop current execution cleanly
+            executionControllerRef.current.stop = true;
+            
+            // Update state to switch page
+            setCurrentPageId(pageId);
+            setActiveSpriteId(targetPage.sprites[0]?.id ?? null);
+        },
       };
-    }, [currentPage.sprites, updateRuntimeSprite, triggerEvent]);
+    }, [currentPage.sprites, updateRuntimeSprite, triggerEvent, pages]);
 
     const handleStop = useCallback(() => {
         console.log('--- Stopping all scripts ---');
@@ -505,7 +526,7 @@ const App: React.FC = () => {
     }, []);
 
   const runProject = useCallback(async (startEvent: 'flag' | 'tap', targetSpriteId?: string) => {
-    if (isRunning) return;
+    // If we call runProject directly (e.g. from goToPage), we force running state
     executionControllerRef.current.stop = false;
     setIsRunning(true);
     
@@ -555,7 +576,21 @@ const App: React.FC = () => {
             console.log('--- Script(s) finished ---');
         }
     }
-  }, [isRunning, currentPage, generateCodeForSprite, createApiForSprite, triggerEvent]);
+  }, [currentPage, generateCodeForSprite, createApiForSprite, triggerEvent]);
+
+  // Update ref for use inside createApiForSprite
+  useEffect(() => {
+      runProjectRef.current = runProject;
+  }, [runProject]);
+
+  // Effect to handle automatic page running after a switch
+  useEffect(() => {
+      if (isPageSwitchingRef.current) {
+          isPageSwitchingRef.current = false;
+          // Trigger Green Flag logic for the new page
+          runProject('flag');
+      }
+  }, [currentPageId, runProject]);
 
   // Handler for clicking a block directly in the workspace to run it
   const handleRunBlock = useCallback(async (code: string) => {
@@ -593,6 +628,7 @@ const App: React.FC = () => {
   }, [activeSpriteId, createApiForSprite]);
 
   const handleGreenFlag = () => {
+    if (isRunning) return;
     runProject('flag');
   };
   
@@ -1060,7 +1096,7 @@ const App: React.FC = () => {
                           Scripts cannot be added to text objects.
                       </div>
                   ) : (
-                      <BlocklyEditor onCodeChange={setGeneratedCode} xml={currentWorkspaceXml} onXmlChange={handleXmlChange} onRunBlock={handleRunBlock} />
+                      <BlocklyEditor onCodeChange={setGeneratedCode} xml={currentWorkspaceXml} onXmlChange={handleXmlChange} onRunBlock={handleRunBlock} pages={pages} />
                   )}
               </div>
             </div>

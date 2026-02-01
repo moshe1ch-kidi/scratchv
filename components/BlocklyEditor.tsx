@@ -119,7 +119,8 @@ class Number99Field extends Blockly.FieldNumber {
 
         const display = document.createElement('div');
         display.className = 'blocklyNumpadDisplay';
-        display.textContent = String((this as Blockly.FieldNumber).getValue());
+        // Start clean (empty) instead of showing current value
+        display.textContent = ''; 
         display.style.color = textColor;
         wrapper.appendChild(display);
 
@@ -127,8 +128,8 @@ class Number99Field extends Blockly.FieldNumber {
         grid.className = 'blocklyNumpadGrid';
 
         const handleDigit = (digit: string) => {
-            let current = String((this as Blockly.FieldNumber).getValue());
-            if (current === '0') current = '';
+            // Read from display to build new value
+            let current = display.textContent || '';
             if (current.length < 2) {
                 const newVal = current + digit;
                 (this as Blockly.FieldNumber).setValue(newVal);
@@ -137,11 +138,11 @@ class Number99Field extends Blockly.FieldNumber {
         };
 
         const handleBackspace = () => {
-            let current = String((this as Blockly.FieldNumber).getValue());
+            let current = display.textContent || '';
             if (current.length > 0) {
                 current = current.slice(0, -1);
-                if (current === '') current = '0';
-                (this as Blockly.FieldNumber).setValue(current);
+                // Update field value. If empty string, set to 0 to keep block valid.
+                (this as Blockly.FieldNumber).setValue(current === '' ? 0 : current);
                 display.textContent = current;
             }
         };
@@ -155,27 +156,44 @@ class Number99Field extends Blockly.FieldNumber {
             btn.textContent = String(num);
             btn.className = 'blocklyNumpadBtn';
             btn.style.color = textColor;
-            btn.onclick = (e) => { e.stopPropagation(); handleDigit(String(num)); };
+            // Use onpointerdown for immediate response anywhere on the button
+            btn.onpointerdown = (e) => { 
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                handleDigit(String(num)); 
+            };
             grid.appendChild(btn);
         });
 
         const delBtn = document.createElement('button');
         delBtn.innerHTML = '<i class="fas fa-arrow-left"></i>'; 
         delBtn.className = 'blocklyNumpadBtn blocklyNumpadAction';
-        delBtn.onclick = (e) => { e.stopPropagation(); handleBackspace(); };
+        delBtn.onpointerdown = (e) => { 
+            e.preventDefault(); 
+            e.stopPropagation(); 
+            handleBackspace(); 
+        };
         grid.appendChild(delBtn);
 
         const zeroBtn = document.createElement('button');
         zeroBtn.textContent = '0';
         zeroBtn.className = 'blocklyNumpadBtn';
         zeroBtn.style.color = textColor;
-        zeroBtn.onclick = (e) => { e.stopPropagation(); handleDigit('0'); };
+        zeroBtn.onpointerdown = (e) => { 
+            e.preventDefault(); 
+            e.stopPropagation(); 
+            handleDigit('0'); 
+        };
         grid.appendChild(zeroBtn);
 
         const okBtn = document.createElement('button');
         okBtn.innerHTML = '<i class="fas fa-check"></i>';
         okBtn.className = 'blocklyNumpadBtn blocklyNumpadOk';
-        okBtn.onclick = (e) => { e.stopPropagation(); handleOk(); };
+        okBtn.onpointerdown = (e) => { 
+            e.preventDefault(); 
+            e.stopPropagation(); 
+            handleOk(); 
+        };
         grid.appendChild(okBtn);
 
         wrapper.appendChild(grid);

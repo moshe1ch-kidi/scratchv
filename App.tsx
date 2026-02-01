@@ -228,6 +228,10 @@ const App: React.FC = () => {
     runtimeSpriteStatesRef.current = runtimeSpriteStates;
   }, [runtimeSpriteStates]);
 
+  // Stores the current speed setting for each sprite ('slow', 'medium', 'fast')
+  // This persists across different script executions for the same sprite.
+  const spriteSpeedsRef = useRef<Record<string, 'slow' | 'medium' | 'fast'>>({});
+
   const eventListenersRef = useRef<Record<string, { spriteId: string | null; callback: Function }[]>>({});
   const executionControllerRef = useRef({ stop: false });
   const longPressTimerRef = useRef<number | null>(null);
@@ -314,6 +318,8 @@ const App: React.FC = () => {
           newStates[s.id] = { ...s.initialState };
       });
       setRuntimeSpriteStates(s => ({...s, ...newStates}));
+      // Reset speeds
+      spriteSpeedsRef.current = {}; 
   }, [pages, currentPageId]);
 
   const generateCodeForSprite = useCallback((sprite: Sprite): string => {
@@ -378,6 +384,30 @@ const App: React.FC = () => {
   const runProjectRef = useRef<(startEvent: 'flag' | 'tap', targetSpriteId?: string) => Promise<void>>(async () => {});
 
   const createApiForSprite = useCallback((spriteId: string) => {
+      // Configuration for different speed settings
+      const SPEED_CONFIG = {
+          slow: { 
+              pps: 200,          // Pixels Per Second (Movement)
+              turnDuration: 600, // MS for rotation
+              hopDuration: 1000  // MS for hop
+          },
+          medium: { 
+              pps: 600, 
+              turnDuration: 300,
+              hopDuration: 500
+          },
+          fast: { 
+              pps: 1500, 
+              turnDuration: 100,
+              hopDuration: 250
+          }
+      };
+
+      const getSpeedSettings = () => {
+          const currentSpeed = spriteSpeedsRef.current[spriteId] || 'medium';
+          return SPEED_CONFIG[currentSpeed];
+      };
+
       // FIX: Changed wait to reject on stop instead of throwing to prevent Uncaught Errors
       // IMPROVEMENT: Use requestAnimationFrame for 0 delay to sync with refresh rate for smooth loops
       const wait = (tenths: number) => {
@@ -426,8 +456,6 @@ const App: React.FC = () => {
         });
       };
       
-      const PIXELS_PER_SECOND = 600; // Adjusted for better visibility (was 1200)
-
       // Renamed to animateGridMovement to reflect input type
       const animateGridMovement = async (gridSteps: number, updateLogic: (p: number, gridDelta: number) => void) => {
           const currentCell = cellSizeRef.current || 48; // Fallback if 0
@@ -435,8 +463,9 @@ const App: React.FC = () => {
           // Calculate total pixel distance based on grid steps
           const pixelDistance = Math.abs(gridSteps) * currentCell;
           
-          // Duration based on speed
-          const duration = (pixelDistance / PIXELS_PER_SECOND) * 1000;
+          // Duration based on current sprite speed state
+          const { pps } = getSpeedSettings();
+          const duration = (pixelDistance / pps) * 1000;
           
           // OPTIMIZATION: If the duration is extremely short (e.g. < 18ms, approx 1 frame), 
           // perform the update instantly without setting up the animation loop.
@@ -453,8 +482,12 @@ const App: React.FC = () => {
         // Rotation remains grid/angle based: 1 step = 15 degrees
         const totalRotation = steps * 15; 
         const startState = runtimeSpriteStatesRef.current[spriteId];
-        // Much faster rotation
-        await animateMovement(Math.max(100, Math.abs(totalRotation) * 2), (p) => {
+        const { turnDuration } = getSpeedSettings();
+        
+        // Calculate duration based on amount of rotation and speed
+        const duration = Math.max(100, (Math.abs(totalRotation) / 30) * turnDuration);
+
+        await animateMovement(duration, (p) => {
             updateRuntimeSprite(spriteId, s => ({...s, rotation: startState.rotation + totalRotation * p}));
         });
       };
@@ -462,7 +495,11 @@ const App: React.FC = () => {
       const turnLeft = async (steps: number) => {
         const totalRotation = steps * 15;
         const startState = runtimeSpriteStatesRef.current[spriteId];
-        await animateMovement(Math.max(100, Math.abs(totalRotation) * 2), (p) => {
+        const { turnDuration } = getSpeedSettings();
+
+        const duration = Math.max(100, (Math.abs(totalRotation) / 30) * turnDuration);
+
+        await animateMovement(duration, (p) => {
             updateRuntimeSprite(spriteId, s => ({...s, rotation: startState.rotation - totalRotation * p}));
         });
       };
@@ -496,11 +533,10 @@ const App: React.FC = () => {
         turnLeft,
         hop: async (height: number) => {
             const startState = runtimeSpriteStatesRef.current[spriteId];
-            // Hop height still treated as relative grid scalar for simplicity, or 
-            // we can treat 'height' as pixels too. Let's keep hop consistent with ScratchJr logic (grid units)
-            // or convert. Let's convert to maintain "Pixel" philosophy if requested.
-            // But usually Hop argument is arbitrary "power". Let's treat it as grid units for height.
-            await animateMovement(500, p => {
+            const { hopDuration } = getSpeedSettings();
+            
+            // Hop height argument scales the visual height, but duration is controlled by speed setting
+            await animateMovement(hopDuration, p => {
                 const yOffset = 4 * height * (p - (p * p));
                 updateRuntimeSprite(spriteId, s => ({...s, y: startState.y + yOffset}));
             });
@@ -547,7 +583,10 @@ const App: React.FC = () => {
         },
         playRecordedSound: async (soundKey: string) => { const audio = localStorage.getItem(soundKey); if (audio) new Audio(audio).play(); await wait(10); },
         wait,
-        setSpeed: (speed: 'slow'|'medium'|'fast') => {},
+        setSpeed: (speed: 'slow'|'medium'|'fast') => {
+            // Update the persistent speed state for this sprite
+            spriteSpeedsRef.current[spriteId] = speed;
+        },
         sendMessage: async (color: string) => { triggerEvent(`message_${color}`); await wait(1); },
         register: (event: string, callback: Function) => {
             if (!eventListenersRef.current[event]) eventListenersRef.current[event] = [];
@@ -585,6 +624,9 @@ const App: React.FC = () => {
     
     if (startEvent === 'flag') {
         console.log('--- Running all Green Flag scripts ---');
+        // Reset speeds on green flag? Usually in ScratchJr, speeds persist until changed, 
+        // but resetting on Stop/Flag is cleaner for debugging. 
+        // We will keep them persistent per session logic described, but resetPageSprites handles full reset.
     } else if(targetSpriteId) {
         setActiveSpriteId(targetSpriteId);
         const tappedSprite = currentPage.sprites.find(s => s.id === targetSpriteId);

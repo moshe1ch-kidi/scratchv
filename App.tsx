@@ -1,4 +1,4 @@
- import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
@@ -1146,6 +1146,9 @@ const App: React.FC = () => {
                                                       e.stopPropagation();
                                                       handleDeleteSprite(sprite.id);
                                                     }}
+                                                    // CRITICAL FIX: Stop propagation here too for consistency
+                                                    onMouseDown={(e) => e.stopPropagation()}
+                                                    onTouchStart={(e) => e.stopPropagation()}
                                                     className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-sm shadow-lg z-20 animate-pulse"
                                                     title="Delete"
                                                   >
@@ -1281,6 +1284,9 @@ const App: React.FC = () => {
                                                   e.stopPropagation();
                                                   handleDeletePage(page.id);
                                                 }}
+                                                // CRITICAL FIX: Stop propagation here too
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                onTouchStart={(e) => e.stopPropagation()}
                                                 className="absolute -top-2 -left-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-sm shadow-lg z-20 animate-pulse"
                                                 title="Delete Page"
                                               >

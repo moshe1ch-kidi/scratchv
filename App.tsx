@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+ import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
@@ -426,23 +426,27 @@ const App: React.FC = () => {
         });
       };
       
-      const PIXELS_PER_SECOND = 1200; // Speed of movement increased significantly
+      const PIXELS_PER_SECOND = 600; // Adjusted for better visibility (was 1200)
 
-      const animatePixelMovement = async (pixelSteps: number, updateLogic: (p: number, gridDelta: number) => void) => {
+      // Renamed to animateGridMovement to reflect input type
+      const animateGridMovement = async (gridSteps: number, updateLogic: (p: number, gridDelta: number) => void) => {
           const currentCell = cellSizeRef.current || 48; // Fallback if 0
-          const gridDelta = pixelSteps / currentCell;
-          const duration = (Math.abs(pixelSteps) / PIXELS_PER_SECOND) * 1000;
           
-          // OPTIMIZATION: If the duration is extremely short (e.g. < 20ms, approx 1 frame), 
+          // Calculate total pixel distance based on grid steps
+          const pixelDistance = Math.abs(gridSteps) * currentCell;
+          
+          // Duration based on speed
+          const duration = (pixelDistance / PIXELS_PER_SECOND) * 1000;
+          
+          // OPTIMIZATION: If the duration is extremely short (e.g. < 18ms, approx 1 frame), 
           // perform the update instantly without setting up the animation loop.
-          // This allows "Forever -> Move 1" loops to run smoothly at max framerate 
-          // driven by the outer loop's wait(0) instead of nested RAF loops.
-          if (duration < 20) {
-              updateLogic(1, gridDelta);
+          // This allows "Forever -> Move 0.1" loops to run smoothly at max framerate 
+          if (duration < 18) {
+              updateLogic(1, gridSteps);
               return;
           }
 
-          await animateMovement(duration, (p) => updateLogic(p, gridDelta));
+          await animateMovement(duration, (p) => updateLogic(p, gridSteps));
       };
 
       const turnRight = async (steps: number) => {
@@ -466,25 +470,25 @@ const App: React.FC = () => {
       return {
         moveRight: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
-          await animatePixelMovement(steps, (p, gridDelta) => 
+          await animateGridMovement(steps, (p, gridDelta) => 
              updateRuntimeSprite(spriteId, s => ({...s, x: startState.x + gridDelta * p, direction: 1}))
           );
         },
         moveLeft: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
-          await animatePixelMovement(steps, (p, gridDelta) => 
+          await animateGridMovement(steps, (p, gridDelta) => 
              updateRuntimeSprite(spriteId, s => ({...s, x: startState.x - gridDelta * p, direction: -1}))
           );
         },
         moveUp: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
-          await animatePixelMovement(steps, (p, gridDelta) => 
+          await animateGridMovement(steps, (p, gridDelta) => 
              updateRuntimeSprite(spriteId, s => ({...s, y: startState.y + gridDelta * p}))
           );
         },
         moveDown: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
-          await animatePixelMovement(steps, (p, gridDelta) => 
+          await animateGridMovement(steps, (p, gridDelta) => 
              updateRuntimeSprite(spriteId, s => ({...s, y: startState.y - gridDelta * p}))
           );
         },

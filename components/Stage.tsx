@@ -129,7 +129,14 @@ const SpriteCharacter: React.FC<{
         >
             {isMarkedForDelete && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                  onClick={(e) => { 
+                      e.stopPropagation(); 
+                      onDelete(); 
+                  }}
+                  // CRITICAL FIX: Stop propagation on mouse/touch start to prevent the parent 
+                  // onMouseDown from firing, which would interpret this as a drag start or selection.
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
                   className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-sm shadow-lg z-20 animate-pulse"
                   title="Delete"
                 >

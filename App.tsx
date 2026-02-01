@@ -125,7 +125,8 @@ const PresentationView: React.FC<{
   handleSpriteTap: (spriteId: string) => void;
   isRunning: boolean;
   onExit: () => void;
-}> = ({ currentPage, runtimeSpriteStates, handleGreenFlag, handleStop, resetPageSprites, handleSpriteTap, isRunning, onExit }) => {
+  onStageResize: (size: number) => void;
+}> = ({ currentPage, runtimeSpriteStates, handleGreenFlag, handleStop, resetPageSprites, handleSpriteTap, isRunning, onExit, onStageResize }) => {
   const dummyRef = useRef(false);
 
   return (
@@ -152,6 +153,7 @@ const PresentationView: React.FC<{
           onSpritePressStart={() => {}}
           onSpritePressEnd={() => {}}
           longPressCompletedRef={dummyRef}
+          onStageResize={onStageResize}
         />
       </div>
 
@@ -206,6 +208,11 @@ const App: React.FC = () => {
   const [pageToDeleteId, setPageToDeleteId] = useState<string | null>(null);
   const [editingTextSpriteId, setEditingTextSpriteId] = useState<string | null>(null);
   const [newlyCreatedTextSpriteId, setNewlyCreatedTextSpriteId] = useState<string | null>(null);
+
+  // Store cell size for pixel-based calculations
+  const [cellSize, setCellSize] = useState<number>(0);
+  const cellSizeRef = useRef(0);
+  useEffect(() => { cellSizeRef.current = cellSize; }, [cellSize]);
 
   const [runtimeSpriteStates, setRuntimeSpriteStates] = useState<Record<string, SpriteState>>(() => {
     const initialState: Record<string, SpriteState> = {};
@@ -371,12 +378,21 @@ const App: React.FC = () => {
   const runProjectRef = useRef<(startEvent: 'flag' | 'tap', targetSpriteId?: string) => Promise<void>>(async () => {});
 
   const createApiForSprite = useCallback((spriteId: string) => {
+      // FIX: Changed wait to reject on stop instead of throwing to prevent Uncaught Errors
+      // IMPROVEMENT: Use requestAnimationFrame for 0 delay to sync with refresh rate for smooth loops
       const wait = (tenths: number) => {
-        return new Promise<void>(resolve => {
-          setTimeout(() => {
-            if (!executionControllerRef.current.stop) resolve();
-            else throw new Error('EXECUTION_STOPPED');
-          }, tenths * 100);
+        return new Promise<void>((resolve, reject) => {
+          if (tenths === 0) {
+             requestAnimationFrame(() => {
+                if (!executionControllerRef.current.stop) resolve();
+                else reject(new Error('EXECUTION_STOPPED'));
+             });
+          } else {
+             setTimeout(() => {
+                if (!executionControllerRef.current.stop) resolve();
+                else reject(new Error('EXECUTION_STOPPED'));
+             }, tenths * 100);
+          }
         });
       };
       
@@ -410,10 +426,31 @@ const App: React.FC = () => {
         });
       };
       
+      const PIXELS_PER_SECOND = 1200; // Speed of movement increased significantly
+
+      const animatePixelMovement = async (pixelSteps: number, updateLogic: (p: number, gridDelta: number) => void) => {
+          const currentCell = cellSizeRef.current || 48; // Fallback if 0
+          const gridDelta = pixelSteps / currentCell;
+          const duration = (Math.abs(pixelSteps) / PIXELS_PER_SECOND) * 1000;
+          
+          // OPTIMIZATION: If the duration is extremely short (e.g. < 20ms, approx 1 frame), 
+          // perform the update instantly without setting up the animation loop.
+          // This allows "Forever -> Move 1" loops to run smoothly at max framerate 
+          // driven by the outer loop's wait(0) instead of nested RAF loops.
+          if (duration < 20) {
+              updateLogic(1, gridDelta);
+              return;
+          }
+
+          await animateMovement(duration, (p) => updateLogic(p, gridDelta));
+      };
+
       const turnRight = async (steps: number) => {
-        const totalRotation = steps * 15; // 1 step = 15 degrees
+        // Rotation remains grid/angle based: 1 step = 15 degrees
+        const totalRotation = steps * 15; 
         const startState = runtimeSpriteStatesRef.current[spriteId];
-        await animateMovement(200 + Math.abs(totalRotation), (p) => {
+        // Much faster rotation
+        await animateMovement(Math.max(100, Math.abs(totalRotation) * 2), (p) => {
             updateRuntimeSprite(spriteId, s => ({...s, rotation: startState.rotation + totalRotation * p}));
         });
       };
@@ -421,7 +458,7 @@ const App: React.FC = () => {
       const turnLeft = async (steps: number) => {
         const totalRotation = steps * 15;
         const startState = runtimeSpriteStatesRef.current[spriteId];
-        await animateMovement(200 + Math.abs(totalRotation), (p) => {
+        await animateMovement(Math.max(100, Math.abs(totalRotation) * 2), (p) => {
             updateRuntimeSprite(spriteId, s => ({...s, rotation: startState.rotation - totalRotation * p}));
         });
       };
@@ -429,24 +466,36 @@ const App: React.FC = () => {
       return {
         moveRight: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
-          await animateMovement(steps * 200, p => updateRuntimeSprite(spriteId, s => ({...s, x: startState.x + steps * p, direction: 1})));
+          await animatePixelMovement(steps, (p, gridDelta) => 
+             updateRuntimeSprite(spriteId, s => ({...s, x: startState.x + gridDelta * p, direction: 1}))
+          );
         },
         moveLeft: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
-          await animateMovement(steps * 200, p => updateRuntimeSprite(spriteId, s => ({...s, x: startState.x - steps * p, direction: -1})));
+          await animatePixelMovement(steps, (p, gridDelta) => 
+             updateRuntimeSprite(spriteId, s => ({...s, x: startState.x - gridDelta * p, direction: -1}))
+          );
         },
         moveUp: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
-          await animateMovement(steps * 200, p => updateRuntimeSprite(spriteId, s => ({...s, y: startState.y + steps * p})));
+          await animatePixelMovement(steps, (p, gridDelta) => 
+             updateRuntimeSprite(spriteId, s => ({...s, y: startState.y + gridDelta * p}))
+          );
         },
         moveDown: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
-          await animateMovement(steps * 200, p => updateRuntimeSprite(spriteId, s => ({...s, y: startState.y - steps * p})));
+          await animatePixelMovement(steps, (p, gridDelta) => 
+             updateRuntimeSprite(spriteId, s => ({...s, y: startState.y - gridDelta * p}))
+          );
         },
         turnRight,
         turnLeft,
         hop: async (height: number) => {
             const startState = runtimeSpriteStatesRef.current[spriteId];
+            // Hop height still treated as relative grid scalar for simplicity, or 
+            // we can treat 'height' as pixels too. Let's keep hop consistent with ScratchJr logic (grid units)
+            // or convert. Let's convert to maintain "Pixel" philosophy if requested.
+            // But usually Hop argument is arbitrary "power". Let's treat it as grid units for height.
             await animateMovement(500, p => {
                 const yOffset = 4 * height * (p - (p * p));
                 updateRuntimeSprite(spriteId, s => ({...s, y: startState.y + yOffset}));
@@ -1234,6 +1283,7 @@ const App: React.FC = () => {
                                           onSpritePressStart={handleSpritePressStart}
                                           onSpritePressEnd={handlePressEnd}
                                           longPressCompletedRef={longPressCompleted}
+                                          onStageResize={setCellSize}
                                         />
                                         {editingTextSprite && (
                                           <TextEditor 
@@ -1319,6 +1369,7 @@ const App: React.FC = () => {
           handleSpriteTap={handleSpriteTap}
           isRunning={isRunning}
           onExit={handleTogglePresentationMode}
+          onStageResize={setCellSize}
         />
       )}
     </div>

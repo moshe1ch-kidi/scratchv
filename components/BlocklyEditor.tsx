@@ -92,7 +92,8 @@ class Number99Field extends Blockly.FieldNumber {
     public isSerializable() { return true; }
 
     constructor(value: string | number) {
-        super(value, 0, 99, 1);
+        // Changed limit to 9999 to support larger pixel values
+        super(value, 0, 9999, 1);
     }
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -130,7 +131,8 @@ class Number99Field extends Blockly.FieldNumber {
         const handleDigit = (digit: string) => {
             // Read from display to build new value
             let current = display.textContent || '';
-            if (current.length < 2) {
+            // Allow up to 4 digits
+            if (current.length < 4) {
                 const newVal = current + digit;
                 (this as Blockly.FieldNumber).setValue(newVal);
                 display.textContent = newVal;
@@ -710,10 +712,11 @@ const initializeBlocks = () => {
         });
     };
 
-    createMotionBlock('motion_right', 'moveRight', ICONS.right, "Move Right");
-    createMotionBlock('motion_left', 'moveLeft', ICONS.left, "Move Left");
-    createMotionBlock('motion_up', 'moveUp', ICONS.up, "Move Up");
-    createMotionBlock('motion_down', 'moveDown', ICONS.down, "Move Down");
+    // Default movement steps set to 1
+    createMotionBlock('motion_right', 'moveRight', ICONS.right, "Move Right", 1);
+    createMotionBlock('motion_left', 'moveLeft', ICONS.left, "Move Left", 1);
+    createMotionBlock('motion_up', 'moveUp', ICONS.up, "Move Up", 1);
+    createMotionBlock('motion_down', 'moveDown', ICONS.down, "Move Down", 1);
     createMotionBlock('motion_turn_right', 'turnRight', ICONS.turnRight, "Turn Right", 1);
     createMotionBlock('motion_turn_left', 'turnLeft', ICONS.turnLeft, "Turn Left", 1);
     createMotionBlock('motion_hop', 'hop', ICONS.hop, "Hop", 1);
@@ -931,7 +934,8 @@ const initializeBlocks = () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const generator = javascriptGenerator as any;
         const branch = generator ? generator.statementToCode(block, 'DO') : '';
-        return `while (true) {\n${branch} await wait(1);\n}\n`;
+        // Wait 0 essentially yields for 1 frame via requestAnimationFrame in App.tsx
+        return `while (true) {\n${branch} await wait(0);\n}\n`;
     });
 
     // --- Go to Page (Red) ---

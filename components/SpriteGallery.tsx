@@ -1,6 +1,12 @@
 import React from 'react';
 
 const SPRITE_URLS = [
+  'https://codejredu.github.io/jr/scratchjr/svglibrary/Aeroplane.svg',
+  'https://codejredu.github.io/jr/scratchjr/svglibrary/Astronaut.svg',
+  'https://codejredu.github.io/jr/scratchjr/svglibrary/Bus.svg',
+  'https://codejredu.github.io/jr/scratchjr/svglibrary/Camel.svg',
+  'https://codejredu.github.io/jr/scratchjr/svglibrary/Car.svg',
+  'https://codejredu.github.io/jr/scratchjr/svglibrary/Car1.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Fort.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Frog.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Giraffe.svg',

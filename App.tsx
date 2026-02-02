@@ -482,6 +482,7 @@ const App: React.FC = () => {
         // Rotation remains grid/angle based: 1 step = 15 degrees
         const totalRotation = steps * 15; 
         const startState = runtimeSpriteStatesRef.current[spriteId];
+        const targetRotation = startState.rotation + totalRotation;
         const { turnDuration } = getSpeedSettings();
         
         // Calculate duration based on amount of rotation and speed
@@ -490,11 +491,15 @@ const App: React.FC = () => {
         await animateMovement(duration, (p) => {
             updateRuntimeSprite(spriteId, s => ({...s, rotation: startState.rotation + totalRotation * p}));
         });
+        
+        // Prevent drift: Snap to exact calculated rotation
+        updateRuntimeSprite(spriteId, s => ({...s, rotation: targetRotation}));
       };
       
       const turnLeft = async (steps: number) => {
         const totalRotation = steps * 15;
         const startState = runtimeSpriteStatesRef.current[spriteId];
+        const targetRotation = startState.rotation - totalRotation;
         const { turnDuration } = getSpeedSettings();
 
         const duration = Math.max(100, (Math.abs(totalRotation) / 30) * turnDuration);
@@ -502,32 +507,51 @@ const App: React.FC = () => {
         await animateMovement(duration, (p) => {
             updateRuntimeSprite(spriteId, s => ({...s, rotation: startState.rotation - totalRotation * p}));
         });
+        
+        // Prevent drift: Snap to exact calculated rotation
+        updateRuntimeSprite(spriteId, s => ({...s, rotation: targetRotation}));
       };
       
       return {
         moveRight: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
+          const targetX = startState.x + steps;
+          
           await animateGridMovement(steps, (p, gridDelta) => 
              updateRuntimeSprite(spriteId, s => ({...s, x: startState.x + gridDelta * p, direction: 1}))
           );
+          // Snap to exact position
+          updateRuntimeSprite(spriteId, s => ({...s, x: targetX, direction: 1}));
         },
         moveLeft: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
+          const targetX = startState.x - steps;
+          
           await animateGridMovement(steps, (p, gridDelta) => 
              updateRuntimeSprite(spriteId, s => ({...s, x: startState.x - gridDelta * p, direction: -1}))
           );
+          // Snap to exact position
+          updateRuntimeSprite(spriteId, s => ({...s, x: targetX, direction: -1}));
         },
         moveUp: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
+          const targetY = startState.y + steps;
+          
           await animateGridMovement(steps, (p, gridDelta) => 
              updateRuntimeSprite(spriteId, s => ({...s, y: startState.y + gridDelta * p}))
           );
+          // Snap to exact position
+          updateRuntimeSprite(spriteId, s => ({...s, y: targetY}));
         },
         moveDown: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
+          const targetY = startState.y - steps;
+          
           await animateGridMovement(steps, (p, gridDelta) => 
              updateRuntimeSprite(spriteId, s => ({...s, y: startState.y - gridDelta * p}))
           );
+          // Snap to exact position
+          updateRuntimeSprite(spriteId, s => ({...s, y: targetY}));
         },
         turnRight,
         turnLeft,
@@ -540,6 +564,8 @@ const App: React.FC = () => {
                 const yOffset = 4 * height * (p - (p * p));
                 updateRuntimeSprite(spriteId, s => ({...s, y: startState.y + yOffset}));
             });
+            // Ensure we land exactly back on the original Y
+            updateRuntimeSprite(spriteId, s => ({...s, y: startState.y}));
         },
         goHome: async () => {
             const sprite = currentPage.sprites.find(s => s.id === spriteId);
@@ -556,6 +582,15 @@ const App: React.FC = () => {
                     visible: targetState.visible,
                 }));
             });
+            // Final snap for Go Home
+            updateRuntimeSprite(spriteId, s => ({
+                ...s,
+                x: targetState.x,
+                y: targetState.y,
+                rotation: targetState.rotation,
+                scale: targetState.scale,
+                visible: targetState.visible
+            }));
         },
         say: async (message: string) => {
           updateRuntimeSprite(spriteId, s => ({...s, message}));

@@ -21,6 +21,11 @@ const BACKGROUND_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Spring.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Summer.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Theatre.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/main/bg/airport.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/main/bg/beach.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/main/bg/city.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/main/bg/nightcity.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/main/bg/vilage.svg'
 ];
 
 interface BackgroundGalleryProps {

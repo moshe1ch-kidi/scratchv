@@ -1,4 +1,4 @@
- import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
@@ -223,10 +223,11 @@ const App: React.FC = () => {
   });
   
   // Ref to hold the latest sprite states to prevent stale state in animation loops
+  // initialized with the same state as the useState
   const runtimeSpriteStatesRef = useRef(runtimeSpriteStates);
-  useEffect(() => {
-    runtimeSpriteStatesRef.current = runtimeSpriteStates;
-  }, [runtimeSpriteStates]);
+  
+  // Removed useEffect synchronization to avoid race conditions. 
+  // All updates to runtimeSpriteStates now go through setAndSyncRuntimeSpriteStates or manual dual-updates.
 
   // Stores the current speed setting for each sprite ('slow', 'medium', 'fast')
   // This persists across different script executions for the same sprite.
@@ -273,41 +274,42 @@ const App: React.FC = () => {
     window.addEventListener('mouseup', handleMouseUp);
 }, [pagesPanelWidth]);
 
+  // Centralized helper to update both State and Ref to ensure sync
+  const setAndSyncRuntimeSpriteStates = useCallback((updater: (prev: Record<string, SpriteState>) => Record<string, SpriteState>) => {
+      setRuntimeSpriteStates(prev => {
+          const next = updater(prev);
+          runtimeSpriteStatesRef.current = next;
+          return next;
+      });
+  }, []);
 
-  const updateRuntimeSprite = useCallback((spriteId: string, updater: (prev: SpriteState) => SpriteState) => {
-    setRuntimeSpriteStates(prevStates => {
-      const stateBeforeUpdate = prevStates[spriteId] || INITIAL_SPRITE_STATE;
-      const stateAfterUpdate = updater(stateBeforeUpdate);
-
-      const newState = { ...stateAfterUpdate };
-
-      // A sprite is 3 units wide/tall, so its visual extent is 1.5 from its center.
+  const normalizeSpriteState = useCallback((s: SpriteState) => {
       const buffer = 1.5; 
       const stageWidthWithBuffer = GRID_COLS + 2 * buffer;
       const stageHeightWithBuffer = GRID_ROWS + 2 * buffer;
+      const newState = { ...s };
 
-      // Wrap X coordinate
-      if (newState.x > GRID_COLS + buffer) {
-        newState.x -= stageWidthWithBuffer;
-      }
-      if (newState.x < 1 - buffer) {
-        newState.x += stageWidthWithBuffer;
-      }
+      if (newState.x > GRID_COLS + buffer) newState.x -= stageWidthWithBuffer;
+      if (newState.x < 1 - buffer) newState.x += stageWidthWithBuffer;
 
-      // Wrap Y coordinate
-      if (newState.y > GRID_ROWS + buffer) {
-        newState.y -= stageHeightWithBuffer;
-      }
-      if (newState.y < 1 - buffer) {
-        newState.y += stageHeightWithBuffer;
-      }
+      if (newState.y > GRID_ROWS + buffer) newState.y -= stageHeightWithBuffer;
+      if (newState.y < 1 - buffer) newState.y += stageHeightWithBuffer;
+      
+      return newState;
+  }, []);
+
+  const updateRuntimeSprite = useCallback((spriteId: string, updater: (prev: SpriteState) => SpriteState) => {
+    setAndSyncRuntimeSpriteStates(prevStates => {
+      const stateBeforeUpdate = prevStates[spriteId] || INITIAL_SPRITE_STATE;
+      const stateAfterUpdate = updater(stateBeforeUpdate);
+      const normalized = normalizeSpriteState(stateAfterUpdate);
       
       return {
         ...prevStates,
-        [spriteId]: newState
+        [spriteId]: normalized
       };
     });
-  }, []);
+  }, [setAndSyncRuntimeSpriteStates, normalizeSpriteState]);
 
   const resetPageSprites = useCallback(() => {
       const page = pages.find(p => p.id === currentPageId);
@@ -317,10 +319,10 @@ const App: React.FC = () => {
       page.sprites.forEach(s => {
           newStates[s.id] = { ...s.initialState };
       });
-      setRuntimeSpriteStates(s => ({...s, ...newStates}));
+      setAndSyncRuntimeSpriteStates(s => ({...s, ...newStates}));
       // Reset speeds
       spriteSpeedsRef.current = {}; 
-  }, [pages, currentPageId]);
+  }, [pages, currentPageId, setAndSyncRuntimeSpriteStates]);
 
   const generateCodeForSprite = useCallback((sprite: Sprite): string => {
     if (sprite.type === 'text' || !javascriptGenerator) {
@@ -456,6 +458,24 @@ const App: React.FC = () => {
         });
       };
       
+      // Helper to synchronously update logical state (Ref) and trigger visual update (State)
+      const commitStateUpdate = (updater: (prev: SpriteState) => SpriteState) => {
+          const prevState = runtimeSpriteStatesRef.current[spriteId];
+          const newState = normalizeSpriteState(updater(prevState));
+          
+          // Sync Ref FIRST to ensure next instruction sees correct state
+          runtimeSpriteStatesRef.current = {
+              ...runtimeSpriteStatesRef.current,
+              [spriteId]: newState
+          };
+
+          // Update Visuals
+          setRuntimeSpriteStates(prev => ({
+              ...prev,
+              [spriteId]: newState
+          }));
+      };
+
       // Renamed to animateGridMovement to reflect input type
       const animateGridMovement = async (gridSteps: number, updateLogic: (p: number, gridDelta: number) => void) => {
           const currentCell = cellSizeRef.current || 48; // Fallback if 0
@@ -492,8 +512,8 @@ const App: React.FC = () => {
             updateRuntimeSprite(spriteId, s => ({...s, rotation: startState.rotation + totalRotation * p}));
         });
         
-        // Prevent drift: Snap to exact calculated rotation
-        updateRuntimeSprite(spriteId, s => ({...s, rotation: targetRotation}));
+        // Final Commit - ensures perfect accuracy for loop
+        commitStateUpdate(s => ({...s, rotation: targetRotation}));
       };
       
       const turnLeft = async (steps: number) => {
@@ -508,8 +528,8 @@ const App: React.FC = () => {
             updateRuntimeSprite(spriteId, s => ({...s, rotation: startState.rotation - totalRotation * p}));
         });
         
-        // Prevent drift: Snap to exact calculated rotation
-        updateRuntimeSprite(spriteId, s => ({...s, rotation: targetRotation}));
+        // Final Commit - ensures perfect accuracy for loop
+        commitStateUpdate(s => ({...s, rotation: targetRotation}));
       };
       
       return {
@@ -521,7 +541,7 @@ const App: React.FC = () => {
              updateRuntimeSprite(spriteId, s => ({...s, x: startState.x + gridDelta * p, direction: 1}))
           );
           // Snap to exact position
-          updateRuntimeSprite(spriteId, s => ({...s, x: targetX, direction: 1}));
+          commitStateUpdate(s => ({...s, x: targetX, direction: 1}));
         },
         moveLeft: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
@@ -531,7 +551,7 @@ const App: React.FC = () => {
              updateRuntimeSprite(spriteId, s => ({...s, x: startState.x - gridDelta * p, direction: -1}))
           );
           // Snap to exact position
-          updateRuntimeSprite(spriteId, s => ({...s, x: targetX, direction: -1}));
+          commitStateUpdate(s => ({...s, x: targetX, direction: -1}));
         },
         moveUp: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
@@ -541,7 +561,7 @@ const App: React.FC = () => {
              updateRuntimeSprite(spriteId, s => ({...s, y: startState.y + gridDelta * p}))
           );
           // Snap to exact position
-          updateRuntimeSprite(spriteId, s => ({...s, y: targetY}));
+          commitStateUpdate(s => ({...s, y: targetY}));
         },
         moveDown: async (steps: number) => {
           const startState = runtimeSpriteStatesRef.current[spriteId];
@@ -551,7 +571,7 @@ const App: React.FC = () => {
              updateRuntimeSprite(spriteId, s => ({...s, y: startState.y - gridDelta * p}))
           );
           // Snap to exact position
-          updateRuntimeSprite(spriteId, s => ({...s, y: targetY}));
+          commitStateUpdate(s => ({...s, y: targetY}));
         },
         turnRight,
         turnLeft,
@@ -565,7 +585,7 @@ const App: React.FC = () => {
                 updateRuntimeSprite(spriteId, s => ({...s, y: startState.y + yOffset}));
             });
             // Ensure we land exactly back on the original Y
-            updateRuntimeSprite(spriteId, s => ({...s, y: startState.y}));
+            commitStateUpdate(s => ({...s, y: startState.y}));
         },
         goHome: async () => {
             const sprite = currentPage.sprites.find(s => s.id === spriteId);
@@ -583,7 +603,7 @@ const App: React.FC = () => {
                 }));
             });
             // Final snap for Go Home
-            updateRuntimeSprite(spriteId, s => ({
+            commitStateUpdate(s => ({
                 ...s,
                 x: targetState.x,
                 y: targetState.y,
@@ -644,7 +664,7 @@ const App: React.FC = () => {
             setActiveSpriteId(targetPage.sprites[0]?.id ?? null);
         },
       };
-    }, [currentPage.sprites, updateRuntimeSprite, triggerEvent, pages]);
+    }, [currentPage.sprites, updateRuntimeSprite, triggerEvent, pages, setAndSyncRuntimeSpriteStates, normalizeSpriteState]);
 
     const handleStop = useCallback(() => {
         console.log('--- Stopping all scripts ---');
@@ -780,14 +800,14 @@ const App: React.FC = () => {
     setPages([...pages, newPage]);
     setCurrentPageId(newPage.id);
     setActiveSpriteId(newPage.sprites[0]?.id ?? null);
-    setRuntimeSpriteStates(s => ({ ...s, [newPage.sprites[0].id]: newPage.sprites[0].initialState }));
+    setAndSyncRuntimeSpriteStates(s => ({ ...s, [newPage.sprites[0].id]: newPage.sprites[0].initialState }));
   };
 
   const handleAddSpriteFromGallery = (costumeUrl: string) => {
       const name = costumeUrl.startsWith('data:image') ? `Drawing ${currentPage.sprites.length + 1}` : costumeUrl.split('/').pop()?.split('.')[0] || `Sprite ${currentPage.sprites.length + 1}`;
       const newSprite = createNewSprite(name, costumeUrl);
       setPages(pages.map(p => p.id === currentPageId ? {...p, sprites: [...p.sprites, newSprite]} : p ));
-      setRuntimeSpriteStates(s => ({ ...s, [newSprite.id]: newSprite.initialState }));
+      setAndSyncRuntimeSpriteStates(s => ({ ...s, [newSprite.id]: newSprite.initialState }));
       setActiveSpriteId(newSprite.id);
       setIsGalleryOpen(false);
   };
@@ -874,7 +894,7 @@ const App: React.FC = () => {
     }));
 
     // Update Runtime State
-    setRuntimeSpriteStates(currentStates => ({
+    setAndSyncRuntimeSpriteStates(currentStates => ({
         ...currentStates,
         [newId]: newSprite.initialState
     }));
@@ -971,14 +991,14 @@ const App: React.FC = () => {
         return newPages;
     });
 
-    setRuntimeSpriteStates(currentStates => {
+    setAndSyncRuntimeSpriteStates(currentStates => {
         const newStates = { ...currentStates };
         delete newStates[spriteIdToDelete];
         return newStates;
     });
 
     setSpriteToDeleteId(null);
-  }, [currentPageId, activeSpriteId]);
+  }, [currentPageId, activeSpriteId, setAndSyncRuntimeSpriteStates]);
 
   const handlePagePressStart = useCallback((pageId: string) => {
     if (pages.length <= 1) return;
@@ -1014,7 +1034,7 @@ const App: React.FC = () => {
     });
 
     if (pageToDelete) {
-        setRuntimeSpriteStates(currentStates => {
+        setAndSyncRuntimeSpriteStates(currentStates => {
             const newStates = { ...currentStates };
             pageToDelete.sprites.forEach(s => {
                 delete newStates[s.id];
@@ -1024,7 +1044,7 @@ const App: React.FC = () => {
     }
 
     setPageToDeleteId(null);
-  }, [pages, currentPageId]);
+  }, [pages, currentPageId, setAndSyncRuntimeSpriteStates]);
 
   const handleAddText = () => {
     const currentActiveSprite = currentPage.sprites.find(s => s.id === activeSpriteId);
@@ -1037,7 +1057,7 @@ const App: React.FC = () => {
 
     const newTextSprite = createNewTextSprite();
     setPages(pages.map(p => p.id === currentPageId ? {...p, sprites: [...p.sprites, newTextSprite]} : p ));
-    setRuntimeSpriteStates(s => ({ ...s, [newTextSprite.id]: newTextSprite.initialState }));
+    setAndSyncRuntimeSpriteStates(s => ({ ...s, [newTextSprite.id]: newTextSprite.initialState }));
     setActiveSpriteId(newTextSprite.id);
     setNewlyCreatedTextSpriteId(newTextSprite.id);
     setEditingTextSpriteId(newTextSprite.id);
@@ -1141,7 +1161,7 @@ const App: React.FC = () => {
                             newRuntimeStates[s.id] = { ...s.initialState };
                         });
                     });
-                    setRuntimeSpriteStates(newRuntimeStates);
+                    setAndSyncRuntimeSpriteStates(newRuntimeStates);
                     
                     handleStop();
 
@@ -1164,7 +1184,7 @@ const App: React.FC = () => {
     document.body.appendChild(input);
     input.click();
     document.body.removeChild(input);
-  }, [handleStop]);
+  }, [handleStop, setAndSyncRuntimeSpriteStates]);
 
   return (
     <div className="flex flex-col h-screen bg-[#FDFCF8] overflow-hidden font-sans select-none">

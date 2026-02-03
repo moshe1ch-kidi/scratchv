@@ -1,4 +1,4 @@
- import React from 'react';
+import React from 'react';
 
 const SPRITE_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Aeroplane.svg',

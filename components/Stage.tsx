@@ -1,4 +1,4 @@
- import React, { useRef, useMemo, useState, useLayoutEffect, useEffect } from 'react';
+import React, { useRef, useMemo, useState, useLayoutEffect, useEffect } from 'react';
 import { Sprite, SpriteState } from '../types';
 
 // Grid constants
@@ -20,6 +20,7 @@ interface StageProps {
   onSpritePressStart: (spriteId: string) => void;
   onSpritePressEnd: () => void;
   longPressCompletedRef: React.RefObject<boolean>;
+  onStageResize?: (cellSize: number) => void;
 }
 
 // --- Helper Components ---
@@ -143,6 +144,28 @@ const SpriteCharacter: React.FC<{
                   <i className="fas fa-times"></i>
                 </button>
             )}
+
+            {/* Message Bubble - Moved outside the transformed container to maintain fixed size and orientation */}
+            {state.message && (
+                <div 
+                    className="absolute bottom-full left-1/2 -translate-x-1/2 z-50 transition-all duration-200 pointer-events-none"
+                    style={{ 
+                        // Dynamic margin to keep bubble above the sprite as it scales
+                        // Base margin 8px (approx mb-2) + half the growth in height
+                        marginBottom: `${8 + (imageSize * (state.scale - 1)) / 2}px` 
+                    }}
+                >
+                    <div className="bg-sky-400 border-[3px] border-blue-600 rounded-2xl px-4 py-2 shadow-lg min-w-[100px] text-center whitespace-nowrap relative">
+                        <span className="text-lg font-bold text-white font-sans">{state.message}</span>
+                        {/* Triangle Tail */}
+                        {/* Outer triangle (border) */}
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[10px] border-t-blue-600 z-10"></div>
+                        {/* Inner triangle (fill) */}
+                        <div className="absolute -bottom-[6px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[7px] border-t-sky-400 z-20"></div>
+                    </div>
+                </div>
+            )}
+
             <div 
                 className={`absolute inset-0 flex items-center justify-center transition-transform duration-200 ease-in-out ${sprite.type === 'text' ? 'p-2' : ''}`}
                 style={{
@@ -151,16 +174,6 @@ const SpriteCharacter: React.FC<{
                     filter: state.visible ? 'none' : 'grayscale(100%) opacity(30%)',
                 }}
             >
-                {state.message && (
-                    <div className="absolute bottom-full mb-2 transition-all duration-300 opacity-100 scale-100">
-                        <div className="bg-white border-[3px] border-slate-800 rounded-2xl px-4 py-2 shadow-lg min-w-[100px] text-center whitespace-nowrap z-20">
-                            <span className="text-lg font-bold text-slate-800 font-sans">{state.message}</span>
-                        </div>
-                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[10px] border-t-slate-800 z-10"></div>
-                        <div className="absolute -bottom-[6px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[7px] border-t-white z-20"></div>
-                    </div>
-                )}
-                
                 {sprite.type === 'text' && sprite.content ? (
                     <div
                       className="font-bold drop-shadow-lg text-center whitespace-pre-wrap break-words select-none"
@@ -193,7 +206,8 @@ const SpriteCharacter: React.FC<{
 
 const Stage: React.FC<StageProps> = ({ 
     sprites, runtimeStates, onClick, showGrid = true, onSpriteDrag, onSpriteDragEnd, onSpriteDoubleClick,
-    spriteToDeleteId, onDeleteSprite, onSetSpriteToDelete, onSpritePressStart, onSpritePressEnd, longPressCompletedRef 
+    spriteToDeleteId, onDeleteSprite, onSetSpriteToDelete, onSpritePressStart, onSpritePressEnd, longPressCompletedRef,
+    onStageResize 
 }) => {
   const stageContentRef = useRef<HTMLDivElement>(null);
   const dragInfo = useRef<{
@@ -218,12 +232,13 @@ const Stage: React.FC<StageProps> = ({
         const cellSize = width / GRID_COLS;
         const height = cellSize * GRID_ROWS;
         setStageSize({ width, height, cellSize });
+        if (onStageResize) onStageResize(cellSize);
       }
     });
     resizeObserver.observe(stageElement);
 
     return () => resizeObserver.disconnect();
-  }, []);
+  }, [onStageResize]);
 
   useEffect(() => {
     if (isFinishingDrag) {

@@ -394,13 +394,13 @@ const App: React.FC = () => {
               hopDuration: 1000  // MS for hop
           },
           medium: { 
-              pps: 600, 
-              turnDuration: 300,
+              pps: 800, // Increased
+              turnDuration: 150, // Faster
               hopDuration: 500
           },
           fast: { 
-              pps: 1500, 
-              turnDuration: 100,
+              pps: 2000, // Increased
+              turnDuration: 50, // Very fast
               hopDuration: 250
           }
       };
@@ -628,15 +628,25 @@ const App: React.FC = () => {
         show: async () => { updateRuntimeSprite(spriteId, s => ({...s, visible: true})); await wait(1); },
         playPop: async () => { 
             try {
-                // Using valid raw github content URL for the pop sound to ensure playback
-                const audio = new Audio("https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/main/pop.mp3");
+                // Using user provided URL for pop sound
+                const audio = new Audio("https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sound/sounds_pop.mp3");
                 await audio.play();
             } catch(e) {
                 console.warn("Failed to play pop sound", e);
             }
             await wait(5); 
         },
-        playRecordedSound: async (soundKey: string) => { const audio = localStorage.getItem(soundKey); if (audio) new Audio(audio).play(); await wait(10); },
+        playRecordedSound: async (soundKey: string) => { 
+            const audioData = localStorage.getItem(soundKey); 
+            if (audioData) {
+                try {
+                    await new Audio(audioData).play();
+                } catch(e) {
+                    console.error("Failed to play recorded sound", e);
+                }
+            } 
+            await wait(10); 
+        },
         wait,
         setSpeed: (speed: 'slow'|'medium'|'fast') => {
             // Update the persistent speed state for this sprite
@@ -1161,7 +1171,8 @@ const App: React.FC = () => {
                             newRuntimeStates[s.id] = { ...s.initialState };
                         });
                     });
-                    setAndSyncRuntimeSpriteStates(newRuntimeStates);
+                    // FIX: Pass a function to setAndSyncRuntimeSpriteStates as expected by its signature
+                    setAndSyncRuntimeSpriteStates(() => newRuntimeStates);
                     
                     handleStop();
 

@@ -135,7 +135,7 @@ const PresentationView: React.FC<{
       <div 
         className="w-full max-w-5xl aspect-[4/3] bg-white border-[4px] border-slate-300 shadow-2xl rounded-xl overflow-hidden relative bg-cover bg-center"
         style={{
-            backgroundImage: currentPage.background,
+            backgroundImage: currentPage.background.startsWith('url') ? currentPage.background : 'none',
             backgroundColor: currentPage.background.startsWith('url') ? '#ffffff' : currentPage.background,
         }}
       >
@@ -1380,7 +1380,12 @@ const App: React.FC = () => {
                               {/* --- MODIFIED SPRITE LIST SECTION END --- */}
 
                               <div className="flex-1 bg-[#e0e0e0] p-8 flex items-center justify-center relative">
-                                  <div className="w-full aspect-[4/3] bg-white border-[4px] border-slate-300 shadow-xl rounded-xl relative bg-cover bg-center" style={{ backgroundImage: currentPage.background, backgroundColor: currentPage.background.startsWith('url') ? '#ffffff' : currentPage.background }}>
+                                  <div className="w-full aspect-[4/3] bg-white border-[4px] border-slate-300 shadow-xl rounded-xl relative bg-cover bg-center" 
+                                    style={{ 
+                                        backgroundImage: currentPage.background.startsWith('url') ? currentPage.background : 'none', 
+                                        backgroundColor: currentPage.background.startsWith('url') ? '#ffffff' : currentPage.background 
+                                    }}
+                                  >
                                         <Stage 
                                           sprites={currentPage.sprites} 
                                           runtimeStates={runtimeSpriteStates} 

@@ -1,4 +1,4 @@
- import React from 'react';
+import React from 'react';
 
 const SPRITE_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Aeroplane.svg',
@@ -75,7 +75,12 @@ const SPRITE_URLS = [
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/main/sprite/fox.svg',
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/main/sprite/monkey.svg',
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/tiger.svg',
-  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/lion.svg'
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/lion.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/doll1.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/doll2.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/doll3.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/doll4.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/doll5.svg'
 ];
 
 interface SpriteGalleryProps {

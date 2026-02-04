@@ -1,4 +1,4 @@
-import React from 'react';
+ import React from 'react';
 
 const SPRITE_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Aeroplane.svg',
@@ -16,10 +16,7 @@ const SPRITE_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Girl3.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Grandfather.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Grandmother.svg',
-  'https://codejredu.github.io/jr/scratchjr/svglibrary/Gym.svg',
-  'https://codejredu.github.io/jr/scratchjr/svglibrary/Gym2.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Horse.svg',
-  'https://codejredu.github.io/jr/scratchjr/svglibrary/House1.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Igloo.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Inuit.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Lizard.svg',
@@ -67,7 +64,6 @@ const SPRITE_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Whale.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Winter.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Wizard.svg',
-  'https://codejredu.github.io/jr/scratchjr/svglibrary/Woods.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Zebra.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/blue1.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/cat1.svg',

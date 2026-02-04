@@ -357,7 +357,11 @@ class FieldSoundRecorder extends Blockly.Field {
     stopRecording() {
         if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
             this.mediaRecorder.addEventListener("stop", () => {
-                const audioBlob = new Blob(this.audioChunks);
+                // FIX: Capture the correct MIME type from the recorder
+                const mimeType = this.mediaRecorder?.mimeType || 'audio/webm';
+                // FIX: Create blob with explicit type to ensure playback compatibility
+                const audioBlob = new Blob(this.audioChunks, { type: mimeType });
+                
                 const reader = new FileReader();
                 reader.readAsDataURL(audioBlob);
                 reader.onloadend = () => {
@@ -392,8 +396,12 @@ class FieldSoundRecorder extends Blockly.Field {
     playRecording(key: string) {
         const base64Audio = localStorage.getItem(key);
         if (base64Audio) {
-            const audio = new Audio(base64Audio);
-            audio.play();
+            try {
+                const audio = new Audio(base64Audio);
+                audio.play();
+            } catch (e) {
+                console.error("Error playing recording", e);
+            }
         }
     }
 

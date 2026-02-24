@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+ import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
@@ -1262,7 +1262,7 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex flex-col shrink-0 w-[850px] border-l border-slate-300 bg-slate-100">
+            <div className="flex flex-col shrink-0 w-[45%] min-w-[400px] max-w-[850px] border-l border-slate-300 bg-slate-100">
                 <div className="flex-1 p-2 overflow-y-auto bg-slate-100">
                   <div className="flex flex-col h-full bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
                       <div className="flex-1 flex overflow-hidden">

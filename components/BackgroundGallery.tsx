@@ -1,4 +1,4 @@
-import React from 'react';
+ import React from 'react';
 
 const BACKGROUND_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Arctic.svg',
@@ -37,14 +37,14 @@ interface BackgroundGalleryProps {
 const BackgroundGallery: React.FC<BackgroundGalleryProps> = ({ onClose, onSelect }) => {
   return (
     <div 
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div 
-        className="bg-slate-50 rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden"
+        className="bg-slate-50 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] h-auto flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+        <div className="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
           <h2 className="text-xl font-bold text-slate-700">Choose a Background</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-800 text-2xl">
             <i className="fas fa-times-circle"></i>

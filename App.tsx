@@ -1268,7 +1268,7 @@ const App: React.FC = () => {
                       <div className="flex-1 flex overflow-hidden">
                             <div className="flex-1 flex flex-col min-w-0">
                               {/* --- MODIFIED SPRITE LIST SECTION START --- */}
-                              <div className="h-[22vh] min-h-[140px] max-h-[200px] bg-gradient-to-b from-slate-50 to-slate-100 border-b border-slate-200 flex items-center px-4 gap-4 overflow-x-auto relative">
+                              <div className="h-[22vh] min-h-[110px] max-h-[162px] bg-gradient-to-b from-slate-50 to-slate-100 border-b border-slate-200 flex items-center px-4 gap-4 overflow-x-auto relative">
                                   <div className="text-xs font-bold text-slate-400 absolute top-1 left-2">Objects</div>
                                   {currentPage.sprites.filter(s => s.type === 'image').map(sprite => {
                                       const isSvg = sprite.costume.endsWith('.svg') || sprite.costume.startsWith('data:image/svg+xml');

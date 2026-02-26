@@ -1320,17 +1320,20 @@ const App: React.FC = () => {
                                               {isSelected ? (
                                                 <>
                                                     {/* Top White Section */}
-                                                    <div className="flex-1 w-full flex flex-col items-center justify-center p-1 bg-white">
-                                                        <img src={sprite.costume} alt={sprite.name} className="h-[50%] w-[50%] object-contain" />
+                                                    <div className="flex-1 w-full flex flex-col items-center justify-between p-1 bg-white min-h-0">
+                                                        {/* Image Container - flex-1 to take available space, min-h-0 to allow shrinking */}
+                                                        <div className="flex-1 w-full flex items-center justify-center min-h-0 overflow-hidden">
+                                                            <img src={sprite.costume} alt={sprite.name} className="max-h-full max-w-full object-contain" />
+                                                        </div>
                                                         
-                                                        {/* Name Pill */}
-                                                        <div className="mt-1 px-2 py-0.5 bg-blue-50 rounded-full border border-blue-200 flex items-center justify-center w-[80%]">
+                                                        {/* Name Pill - shrink-0 to maintain size */}
+                                                        <div className="mt-1 px-2 py-0.5 bg-blue-50 rounded-full border border-blue-200 flex items-center justify-center w-[90%] shrink-0 h-5">
                                                             <input 
                                                                 type="text" 
                                                                 value={sprite.name} 
                                                                 onChange={(e) => handleSpriteNameChange(sprite.id, e.target.value)} 
                                                                 onClick={(e) => e.stopPropagation()} 
-                                                                className="bg-transparent text-[#1e3a8a] font-bold text-xs text-center w-full outline-none" 
+                                                                className="bg-transparent text-[#1e3a8a] font-bold text-[10px] text-center w-full outline-none leading-none" 
                                                                 maxLength={15} 
                                                             />
                                                         </div>

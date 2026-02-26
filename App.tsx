@@ -1268,7 +1268,7 @@ const App: React.FC = () => {
                       <div className="flex-1 flex overflow-hidden">
                             <div className="flex-1 flex flex-col min-w-0">
                               {/* --- MODIFIED SPRITE LIST SECTION START --- */}
-                              <div className="h-44 bg-gradient-to-b from-slate-50 to-slate-100 border-b border-slate-200 flex items-center px-4 gap-4 overflow-x-auto relative">
+                              <div className="h-[22vh] min-h-[140px] max-h-[200px] bg-gradient-to-b from-slate-50 to-slate-100 border-b border-slate-200 flex items-center px-4 gap-4 overflow-x-auto relative">
                                   <div className="text-xs font-bold text-slate-400 absolute top-1 left-2">Objects</div>
                                   {currentPage.sprites.filter(s => s.type === 'image').map(sprite => {
                                       const isSvg = sprite.costume.endsWith('.svg') || sprite.costume.startsWith('data:image/svg+xml');
@@ -1296,8 +1296,8 @@ const App: React.FC = () => {
                                             onTouchEnd={handlePressEnd}
                                             className={`transition-all duration-200 ease-out select-none relative shrink-0
                                                 ${isSelected 
-                                                    ? 'w-[145px] h-[145px] rounded-xl border-[3px] border-[#4B8CC2] shadow-lg z-10 scale-105 bg-white flex flex-col overflow-hidden' 
-                                                    : 'w-[135px] h-[135px] rounded-xl border-[2px] border-[#4B8CC2] bg-white shadow-sm hover:shadow-md hover:-translate-y-1 flex flex-col items-center justify-center cursor-pointer'
+                                                    ? 'h-[90%] aspect-square rounded-xl border-[3px] border-[#4B8CC2] shadow-lg z-10 scale-105 bg-white flex flex-col overflow-hidden' 
+                                                    : 'h-[80%] aspect-square rounded-xl border-[2px] border-[#4B8CC2] bg-white shadow-sm hover:shadow-md hover:-translate-y-1 flex flex-col items-center justify-center cursor-pointer'
                                                 }
                                             `}
                                           >
@@ -1321,23 +1321,23 @@ const App: React.FC = () => {
                                                 <>
                                                     {/* Top White Section */}
                                                     <div className="flex-1 w-full flex flex-col items-center justify-center p-1 bg-white">
-                                                        <img src={sprite.costume} alt={sprite.name} className="h-16 w-16 object-contain" />
+                                                        <img src={sprite.costume} alt={sprite.name} className="h-[50%] w-[50%] object-contain" />
                                                         
                                                         {/* Name Pill */}
-                                                        <div className="mt-1 px-2 py-0.5 bg-blue-50 rounded-full border border-blue-200 flex items-center justify-center">
+                                                        <div className="mt-1 px-2 py-0.5 bg-blue-50 rounded-full border border-blue-200 flex items-center justify-center w-[80%]">
                                                             <input 
                                                                 type="text" 
                                                                 value={sprite.name} 
                                                                 onChange={(e) => handleSpriteNameChange(sprite.id, e.target.value)} 
                                                                 onClick={(e) => e.stopPropagation()} 
-                                                                className="bg-transparent text-[#1e3a8a] font-bold text-xs text-center w-20 outline-none" 
+                                                                className="bg-transparent text-[#1e3a8a] font-bold text-xs text-center w-full outline-none" 
                                                                 maxLength={15} 
                                                             />
                                                         </div>
                                                     </div>
 
                                                     {/* Bottom Blue Section - Footer */}
-                                                    <div className="h-11 w-full bg-[#4B8CC2] flex items-center justify-center gap-3 shrink-0 relative">
+                                                    <div className="h-[25%] w-full bg-[#4B8CC2] flex items-center justify-center gap-3 shrink-0 relative">
                                                         {/* Paint Button */}
                                                         {isSvg && (
                                                             <button 
@@ -1362,7 +1362,7 @@ const App: React.FC = () => {
                                               ) : (
                                                 <>
                                                     {/* Unselected State */}
-                                                    <img src={sprite.costume} alt={sprite.name} className="max-w-[3.5rem] max-h-[3.5rem] object-contain mb-2" />
+                                                    <img src={sprite.costume} alt={sprite.name} className="h-[50%] w-[50%] object-contain mb-2" />
                                                     <span className="text-xs font-bold text-slate-600 truncate max-w-full px-2">{sprite.name}</span>
                                                 </>
                                               )}
@@ -1372,7 +1372,7 @@ const App: React.FC = () => {
                                   <div 
                                       onClick={() => setIsGalleryOpen(true)} 
                                       title="Add Sprite from Gallery" 
-                                      className="w-[135px] h-[135px] border-2 border-dashed border-blue-300 rounded-xl flex flex-col items-center justify-center text-blue-500 hover:bg-blue-50 hover:border-blue-500 transition-colors cursor-pointer min-w-[135px] shrink-0"
+                                      className="h-[80%] aspect-square border-2 border-dashed border-blue-300 rounded-xl flex flex-col items-center justify-center text-blue-500 hover:bg-blue-50 hover:border-blue-500 transition-colors cursor-pointer shrink-0"
                                   >
                                       <i className="fas fa-plus text-3xl"></i>
                                   </div>

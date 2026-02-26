@@ -1294,7 +1294,7 @@ const App: React.FC = () => {
                                             onMouseLeave={handlePressEnd}
                                             onTouchStart={() => handleSpritePressStart(sprite.id)}
                                             onTouchEnd={handlePressEnd}
-                                            className={`transition-all duration-200 ease-out select-none relative
+                                            className={`transition-all duration-200 ease-out select-none relative shrink-0
                                                 ${isSelected 
                                                     ? 'w-20 h-32 rounded-xl border-[3px] border-[#4B8CC2] shadow-lg z-10 scale-105 bg-white flex flex-col overflow-hidden' 
                                                     : 'w-16 h-28 rounded-xl border-[2px] border-[#4B8CC2] bg-white shadow-sm hover:shadow-md hover:-translate-y-1 flex flex-col items-center justify-center cursor-pointer'
@@ -1372,7 +1372,7 @@ const App: React.FC = () => {
                                   <div 
                                       onClick={() => setIsGalleryOpen(true)} 
                                       title="Add Sprite from Gallery" 
-                                      className="w-16 h-28 border-2 border-dashed border-blue-300 rounded-xl flex flex-col items-center justify-center text-blue-500 hover:bg-blue-50 hover:border-blue-500 transition-colors cursor-pointer min-w-[64px]"
+                                      className="w-16 h-28 border-2 border-dashed border-blue-300 rounded-xl flex flex-col items-center justify-center text-blue-500 hover:bg-blue-50 hover:border-blue-500 transition-colors cursor-pointer min-w-[64px] shrink-0"
                                   >
                                       <i className="fas fa-plus text-xl"></i>
                                   </div>

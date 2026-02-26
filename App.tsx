@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+ import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
@@ -1268,7 +1268,7 @@ const App: React.FC = () => {
                       <div className="flex-1 flex overflow-hidden">
                             <div className="flex-1 flex flex-col min-w-0">
                               {/* --- MODIFIED SPRITE LIST SECTION START --- */}
-                              <div className="h-48 bg-gradient-to-b from-slate-50 to-slate-100 border-b border-slate-200 flex items-center px-4 gap-4 overflow-x-auto relative">
+                              <div className="w-full bg-gradient-to-b from-slate-50 to-slate-100 border-b border-slate-200 flex items-center px-4 py-2 gap-4 overflow-x-auto relative shrink-0" style={{ minHeight: '160px' }}>
                                   <div className="text-xs font-bold text-slate-400 absolute top-1 left-2">Objects</div>
                                   {currentPage.sprites.filter(s => s.type === 'image').map(sprite => {
                                       const isSvg = sprite.costume.endsWith('.svg') || sprite.costume.startsWith('data:image/svg+xml');
@@ -1294,12 +1294,17 @@ const App: React.FC = () => {
                                             onMouseLeave={handlePressEnd}
                                             onTouchStart={() => handleSpritePressStart(sprite.id)}
                                             onTouchEnd={handlePressEnd}
-                                            className={`transition-all duration-200 ease-out select-none relative
+                                            className={`transition-all duration-200 ease-out select-none relative aspect-square flex flex-col shrink-0
                                                 ${isSelected 
-                                                    ? 'w-28 h-44 rounded-xl border-[3px] border-[#4B8CC2] shadow-lg z-10 scale-105 bg-white flex flex-col overflow-hidden' 
-                                                    : 'w-24 h-40 rounded-xl border-[2px] border-[#4B8CC2] bg-white shadow-sm hover:shadow-md hover:-translate-y-1 flex flex-col items-center justify-center cursor-pointer'
+                                                    ? 'rounded-xl border-[3px] border-[#4B8CC2] shadow-lg z-10 scale-105 bg-white overflow-hidden' 
+                                                    : 'rounded-xl border-[2px] border-[#4B8CC2] bg-white shadow-sm hover:shadow-md hover:-translate-y-1 items-center justify-center cursor-pointer'
                                                 }
                                             `}
+                                            style={{
+                                                width: '18vw',
+                                                maxWidth: '145px',
+                                                minWidth: '80px'
+                                            }}
                                           >
                                               {spriteToDeleteId === sprite.id && (
                                                   <button
@@ -1320,50 +1325,50 @@ const App: React.FC = () => {
                                               {isSelected ? (
                                                 <>
                                                     {/* Top White Section */}
-                                                    <div className="flex-1 w-full flex flex-col items-center justify-center p-1 bg-white">
-                                                        <img src={sprite.costume} alt={sprite.name} className="h-16 w-16 object-contain" />
+                                                    <div className="flex-1 w-full flex flex-col items-center justify-center p-1 bg-white overflow-hidden">
+                                                        <img src={sprite.costume} alt={sprite.name} className="h-1/2 w-1/2 object-contain" />
                                                         
                                                         {/* Name Pill */}
-                                                        <div className="mt-2 px-3 py-0.5 bg-blue-50 rounded-full border border-blue-200 flex items-center justify-center">
+                                                        <div className="mt-1 px-2 py-0.5 bg-blue-50 rounded-full border border-blue-200 flex items-center justify-center max-w-full">
                                                             <input 
                                                                 type="text" 
                                                                 value={sprite.name} 
                                                                 onChange={(e) => handleSpriteNameChange(sprite.id, e.target.value)} 
                                                                 onClick={(e) => e.stopPropagation()} 
-                                                                className="bg-transparent text-[#1e3a8a] font-bold text-xs text-center w-16 outline-none" 
+                                                                className="bg-transparent text-[#1e3a8a] font-bold text-[10px] sm:text-xs text-center w-16 outline-none" 
                                                                 maxLength={15} 
                                                             />
                                                         </div>
                                                     </div>
 
                                                     {/* Bottom Blue Section - Footer */}
-                                                    <div className="h-14 w-full bg-[#4B8CC2] flex items-center justify-center gap-3 shrink-0 relative">
+                                                    <div className="h-[35%] w-full bg-[#4B8CC2] flex items-center justify-center gap-2 shrink-0 relative">
                                                         {/* Paint Button */}
                                                         {isSvg && (
                                                             <button 
                                                                 onClick={(e) => { e.stopPropagation(); handleEditSprite(sprite.id); }} 
-                                                                className="w-9 h-9 bg-[#FBBF24] hover:bg-[#D97706] rounded-full flex items-center justify-center text-white shadow-md border-2 border-white/20 transition-transform hover:scale-110"
+                                                                className="w-7 h-7 sm:w-9 sm:h-9 bg-[#FBBF24] hover:bg-[#D97706] rounded-full flex items-center justify-center text-white shadow-md border-2 border-white/20 transition-transform hover:scale-110"
                                                                 title="Edit Sprite"
                                                             >
-                                                                <i className="fas fa-paint-brush text-sm"></i>
+                                                                <i className="fas fa-paint-brush text-xs sm:text-sm"></i>
                                                             </button>
                                                         )}
                                                         
                                                         {/* Duplicate Button */}
                                                         <button
                                                             onClick={(e) => handleDuplicateSprite(e, sprite.id)}
-                                                            className="w-9 h-9 bg-[#22C55E] hover:bg-[#16A34A] rounded-full flex items-center justify-center text-white shadow-md border-2 border-white/20 transition-transform hover:scale-110"
+                                                            className="w-7 h-7 sm:w-9 sm:h-9 bg-[#22C55E] hover:bg-[#16A34A] rounded-full flex items-center justify-center text-white shadow-md border-2 border-white/20 transition-transform hover:scale-110"
                                                             title="Duplicate"
                                                         >
-                                                            <i className="fas fa-copy text-sm"></i>
+                                                            <i className="fas fa-copy text-xs sm:text-sm"></i>
                                                         </button>
                                                     </div>
                                                 </>
                                               ) : (
                                                 <>
                                                     {/* Unselected State */}
-                                                    <img src={sprite.costume} alt={sprite.name} className="max-w-[3.5rem] max-h-[3.5rem] object-contain mb-2" />
-                                                    <span className="text-xs font-bold text-slate-600 truncate max-w-full px-1">{sprite.name}</span>
+                                                    <img src={sprite.costume} alt={sprite.name} className="w-1/2 h-1/2 object-contain mb-2" />
+                                                    <span className="text-[10px] sm:text-xs font-bold text-slate-600 truncate max-w-full px-1">{sprite.name}</span>
                                                 </>
                                               )}
                                           </div>
@@ -1372,7 +1377,12 @@ const App: React.FC = () => {
                                   <div 
                                       onClick={() => setIsGalleryOpen(true)} 
                                       title="Add Sprite from Gallery" 
-                                      className="w-24 h-40 border-2 border-dashed border-blue-300 rounded-2xl flex flex-col items-center justify-center text-blue-500 hover:bg-blue-50 hover:border-blue-500 transition-colors cursor-pointer min-w-[96px]"
+                                      className="aspect-square border-2 border-dashed border-blue-300 rounded-2xl flex flex-col items-center justify-center text-blue-500 hover:bg-blue-50 hover:border-blue-500 transition-colors cursor-pointer shrink-0"
+                                      style={{
+                                          width: '18vw',
+                                          maxWidth: '145px',
+                                          minWidth: '80px'
+                                      }}
                                   >
                                       <i className="fas fa-plus text-2xl"></i>
                                   </div>

@@ -909,6 +909,44 @@ const App: React.FC = () => {
     }));
   };
 
+  const handleGrowSprite = useCallback(() => {
+      if (!activeSpriteId) return;
+      
+      // Update Runtime State (Visual)
+      updateRuntimeSprite(activeSpriteId, s => ({ ...s, scale: s.scale + 0.1 }));
+
+      // Update Persistent State (Initial State)
+      setPages(currentPages => currentPages.map(p => {
+          if (p.id !== currentPageId) return p;
+          return {
+              ...p,
+              sprites: p.sprites.map(s => {
+                  if (s.id !== activeSpriteId) return s;
+                  return { ...s, initialState: { ...s.initialState, scale: s.initialState.scale + 0.1 } };
+              })
+          };
+      }));
+  }, [activeSpriteId, currentPageId, updateRuntimeSprite]);
+
+  const handleShrinkSprite = useCallback(() => {
+      if (!activeSpriteId) return;
+
+      // Update Runtime State (Visual)
+      updateRuntimeSprite(activeSpriteId, s => ({ ...s, scale: Math.max(0.1, s.scale - 0.1) }));
+
+      // Update Persistent State (Initial State)
+      setPages(currentPages => currentPages.map(p => {
+          if (p.id !== currentPageId) return p;
+          return {
+              ...p,
+              sprites: p.sprites.map(s => {
+                  if (s.id !== activeSpriteId) return s;
+                  return { ...s, initialState: { ...s.initialState, scale: Math.max(0.1, s.initialState.scale - 0.1) } };
+              })
+          };
+      }));
+  }, [activeSpriteId, currentPageId, updateRuntimeSprite]);
+
   // --- DUPLICATION LOGIC START ---
   const handleDuplicateSprite = (e: React.MouseEvent, spriteId: string) => {
     e.stopPropagation(); // Prevent card selection logic
@@ -1430,6 +1468,26 @@ const App: React.FC = () => {
                               {/* --- MODIFIED SPRITE LIST SECTION END --- */}
 
                               <div className="flex-1 bg-[#e0e0e0] p-8 flex items-center justify-center relative">
+                                  {/* Zoom Controls */}
+                                  <div className="absolute right-0.5 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-20">
+                                      <button 
+                                          onClick={handleGrowSprite}
+                                          disabled={!activeSpriteId}
+                                          className="w-7 h-7 bg-white rounded-full shadow-md flex items-center justify-center text-slate-600 hover:bg-blue-50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all border border-slate-200"
+                                          title="Grow Sprite"
+                                      >
+                                          <i className="fas fa-plus text-xs"></i>
+                                      </button>
+                                      <button 
+                                          onClick={handleShrinkSprite}
+                                          disabled={!activeSpriteId}
+                                          className="w-7 h-7 bg-white rounded-full shadow-md flex items-center justify-center text-slate-600 hover:bg-blue-50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all border border-slate-200"
+                                          title="Shrink Sprite"
+                                      >
+                                          <i className="fas fa-minus text-xs"></i>
+                                      </button>
+                                  </div>
+
                                   <div className="w-full aspect-[4/3] bg-white border-[4px] border-slate-300 shadow-xl rounded-xl relative bg-cover bg-center" 
                                     style={{ 
                                         backgroundImage: currentPage.background.startsWith('url') ? currentPage.background : 'none', 

@@ -7,6 +7,7 @@ import SpriteGallery from './components/SpriteGallery';
 import BackgroundGallery from './components/BackgroundGallery';
 import PaintEditor from './components/PaintEditor';
 import TextEditor from './components/TextEditor';
+import CodingCards from './components/CodingCards';
 import { Page, Sprite, SpriteState } from './types';
 
 // Grid constants, must match Stage.tsx
@@ -201,6 +202,7 @@ const App: React.FC = () => {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isBgGalleryOpen, setIsBgGalleryOpen] = useState(false);
   const [isPaintEditorOpen, setIsPaintEditorOpen] = useState(false);
+  const [isCodingCardsOpen, setIsCodingCardsOpen] = useState(false);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [pagesPanelWidth, setPagesPanelWidth] = useState(140); // Approx w-36
   const [editingSprite, setEditingSprite] = useState<Sprite | null>(null);
@@ -389,19 +391,19 @@ const App: React.FC = () => {
       // Configuration for different speed settings
       const SPEED_CONFIG = {
           slow: { 
-              pps: 200,          // Pixels Per Second (Movement)
-              turnDuration: 600, // MS for rotation
-              hopDuration: 1000  // MS for hop
+              pps: 100,          // Very Slow (New)
+              turnDuration: 800, // Very Slow Rotation
+              hopDuration: 1500  // Very Slow Hop
           },
           medium: { 
-              pps: 800, // Increased
-              turnDuration: 150, // Faster
-              hopDuration: 500
+              pps: 200,          // Formerly Slow
+              turnDuration: 400, 
+              hopDuration: 1000
           },
           fast: { 
-              pps: 2000, // Increased
-              turnDuration: 50, // Very fast
-              hopDuration: 250
+              pps: 800,          // Formerly Medium
+              turnDuration: 100, 
+              hopDuration: 500
           }
       };
 
@@ -506,7 +508,8 @@ const App: React.FC = () => {
         const { turnDuration } = getSpeedSettings();
         
         // Calculate duration based on amount of rotation and speed
-        const duration = Math.max(100, (Math.abs(totalRotation) / 30) * turnDuration);
+        // Adjusted divisor to 45 to speed up larger rotations
+        const duration = Math.max(100, (Math.abs(totalRotation) / 45) * turnDuration);
 
         await animateMovement(duration, (p) => {
             updateRuntimeSprite(spriteId, s => ({...s, rotation: startState.rotation + totalRotation * p}));
@@ -522,7 +525,9 @@ const App: React.FC = () => {
         const targetRotation = startState.rotation - totalRotation;
         const { turnDuration } = getSpeedSettings();
 
-        const duration = Math.max(100, (Math.abs(totalRotation) / 30) * turnDuration);
+        // Calculate duration based on amount of rotation and speed
+        // Adjusted divisor to 45 to speed up larger rotations
+        const duration = Math.max(100, (Math.abs(totalRotation) / 45) * turnDuration);
 
         await animateMovement(duration, (p) => {
             updateRuntimeSprite(spriteId, s => ({...s, rotation: startState.rotation - totalRotation * p}));
@@ -672,6 +677,11 @@ const App: React.FC = () => {
             // Update state to switch page
             setCurrentPageId(pageId);
             setActiveSpriteId(targetPage.sprites[0]?.id ?? null);
+        },
+        stopAll: async () => {
+             console.log('--- Stop Block Triggered ---');
+             executionControllerRef.current.stop = true;
+             setIsRunning(false);
         },
       };
     }, [currentPage.sprites, updateRuntimeSprite, triggerEvent, pages, setAndSyncRuntimeSpriteStates, normalizeSpriteState]);
@@ -1215,6 +1225,7 @@ const App: React.FC = () => {
           }}
           initialSprite={editingSprite}
       />}
+      {isCodingCardsOpen && <CodingCards onClose={() => setIsCodingCardsOpen(false)} />}
       
       {!isPresentationMode && (
         <nav className="h-24 px-4 flex items-center justify-center shrink-0 relative z-20 shadow-md" style={{ backgroundColor: '#4B8CC2' }}>
@@ -1222,6 +1233,7 @@ const App: React.FC = () => {
             <NavButton icon="fas fa-save" alt="Save Project" onClick={handleSaveProject} />
             <NavButton icon="fas fa-folder-open" alt="Load Project" onClick={handleLoadProject} />
             <div className="w-px h-16 bg-slate-300/50 mx-2"></div>
+            <NavButton icon="fas fa-book-open" alt="Coding Cards" onClick={() => setIsCodingCardsOpen(true)} />
             <NavButton src="https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/ui/fullOff2.svg" alt="Presentation Mode" onClick={handleTogglePresentationMode} />
             <NavButton src={showGrid ? "https://codejredu.github.io/jr/scratchjr/assets/ui/gridOff.svg" : "https://codejredu.github.io/jr/scratchjr/assets/ui/gridOn.svg"} alt="Show/Hide Grid" onClick={() => setShowGrid(prev => !prev)} />
             <NavButton src="https://codejredu.github.io/jr/scratchjr/assets/ui/scene1.svg" alt="Change Background" onClick={() => setIsBgGalleryOpen(true)} />

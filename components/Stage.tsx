@@ -167,7 +167,7 @@ const SpriteCharacter: React.FC<{
             )}
 
             <div 
-                className={`absolute inset-0 flex items-center justify-center transition-transform duration-200 ease-in-out ${sprite.type === 'text' ? 'p-2' : ''}`}
+                className={`absolute inset-0 flex items-center justify-center ${sprite.type === 'text' ? 'p-2' : ''}`}
                 style={{
                     transform: `rotate(${state.rotation}deg) scale(${finalScaleX}, ${finalScaleY})`,
                     opacity: state.visible ? 1 : 0.2,

@@ -493,6 +493,7 @@ const ICONS = {
     // End
     forever: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Forever.svg",
     gotoPage: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/GoToPage.svg",
+    transparent: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PC9zdmc+",
 };
 
 const COLORS = {
@@ -887,6 +888,21 @@ const initializeBlocks = () => {
         return `await wait(${ms});\n`;
     });
 
+    Blockly.Blocks['control_stop'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage("https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Stop.svg", 64, 64, "*"))
+                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(false, null);
+            this.setColour(COLORS.CONTROL);
+            this.setTooltip("Stop all");
+        }
+    };
+    registerGenerator('control_stop', () => `await stopAll();\n`);
+
     Blockly.Blocks['control_set_speed'] = {
         init: function() {
             this.appendDummyInput()
@@ -961,6 +977,21 @@ const initializeBlocks = () => {
         const pageId = block.getFieldValue('PAGE_ID');
         return `await goToPage('${pageId}');\n`;
     });
+
+    // --- Idle/Stop (Red) ---
+    Blockly.Blocks['end_idle'] = {
+        init: function() {
+            this.appendDummyInput()
+                .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField(new Blockly.FieldImage(ICONS.transparent, 64, 64, "*"))
+                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for number field width
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(false, null); // Explicitly no next connection
+            this.setColour(COLORS.END);
+            this.setTooltip("End");
+        }
+    };
+    registerGenerator('end_idle', () => `// End\n`);
 };
 
 // --- Toolbox Definition ---
@@ -1039,6 +1070,7 @@ const STANDARD_TOOLBOX = {
         },
         contents: [
             { kind: 'block', type: 'control_wait', gap: GAP_SMALL },
+            { kind: 'block', type: 'control_stop', gap: GAP_SMALL },
             { kind: 'block', type: 'control_set_speed', gap: GAP_SMALL },
             { kind: 'block', type: 'control_repeat', gap: GAP_SMALL },
         ]
@@ -1052,6 +1084,7 @@ const STANDARD_TOOLBOX = {
         },
         contents: [
             { kind: 'block', type: 'end_forever', gap: GAP_SMALL },
+            { kind: 'block', type: 'end_idle', gap: GAP_SMALL },
         ]
     }
   ],

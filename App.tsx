@@ -237,6 +237,7 @@ const App: React.FC = () => {
 
   const eventListenersRef = useRef<Record<string, { spriteId: string | null; callback: Function }[]>>({});
   const executionControllerRef = useRef({ stop: false });
+  const activeCollisionsRef = useRef<Set<string>>(new Set()); // Tracks active collision pairs
   const longPressTimerRef = useRef<number | null>(null);
   const longPressCompleted = useRef(false);
   const lastActiveImageSpriteIdRef = useRef<string | null>(null);
@@ -430,6 +431,38 @@ const App: React.FC = () => {
         });
       };
       
+      const checkCollisions = (activeId: string) => {
+          const activeState = runtimeSpriteStatesRef.current[activeId];
+          if (!activeState || !activeState.visible) return;
+
+          currentPage.sprites.forEach(other => {
+              if (other.id === activeId) return;
+              const otherState = runtimeSpriteStatesRef.current[other.id];
+              if (!otherState || !otherState.visible) return;
+
+              // Simple distance check (threshold 1.0 grid unit)
+              const dist = Math.sqrt(
+                  Math.pow(activeState.x - otherState.x, 2) + 
+                  Math.pow(activeState.y - otherState.y, 2)
+              );
+              
+              const pairId = [activeId, other.id].sort().join(':');
+
+              if (dist < 1.0) { 
+                  if (!activeCollisionsRef.current.has(pairId)) {
+                      activeCollisionsRef.current.add(pairId);
+                      // Trigger bump events asynchronously without awaiting
+                      triggerEvent('bump', activeId).catch(console.error);
+                      triggerEvent('bump', other.id).catch(console.error);
+                  }
+              } else {
+                  if (activeCollisionsRef.current.has(pairId)) {
+                      activeCollisionsRef.current.delete(pairId);
+                  }
+              }
+          });
+      };
+
       const animateMovement = (duration: number, updateFn: (progress: number) => void): Promise<void> => {
         return new Promise<void>((resolve, reject) => {
             // FIX: Ensure duration is at least 1 frame (16ms) to prevent div-by-zero or near-instant completion issues
@@ -445,6 +478,7 @@ const App: React.FC = () => {
                 // Safely update
                 try {
                     updateFn(progress);
+                    checkCollisions(spriteId); // Check for collisions after update
                 } catch(e) {
                     console.error("Animation update failed", e);
                     return reject(e);
@@ -494,6 +528,7 @@ const App: React.FC = () => {
           // This allows "Forever -> Move 0.1" loops to run smoothly at max framerate 
           if (duration < 18) {
               updateLogic(1, gridSteps);
+              checkCollisions(spriteId);
               return;
           }
 

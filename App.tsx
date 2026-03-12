@@ -355,8 +355,11 @@ const App: React.FC = () => {
                     fullCode += `register('flag', async () => {\n${chainCode}\n});\n`; break;
                 case 'event_tap':
                     fullCode += `register('tap', async () => {\n${chainCode}\n});\n`; break;
-                case 'event_bump':
-                    fullCode += `register('bump', async () => {\n${chainCode}\n});\n`; break;
+                case 'event_bump': {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const targetSpriteId = (block as any).getFieldValue('SPRITE_ID') || 'ANY';
+                    fullCode += `register('bump_${targetSpriteId}', async () => {\n${chainCode}\n});\n`; break;
+                }
                 case 'event_message': {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const msgColor = (block as any).getFieldValue('COLOR');
@@ -452,8 +455,10 @@ const App: React.FC = () => {
                   if (!activeCollisionsRef.current.has(pairId)) {
                       activeCollisionsRef.current.add(pairId);
                       // Trigger bump events asynchronously without awaiting
-                      triggerEvent('bump', activeId).catch(console.error);
-                      triggerEvent('bump', other.id).catch(console.error);
+                      triggerEvent(`bump_${other.id}`, activeId).catch(console.error);
+                      triggerEvent('bump_ANY', activeId).catch(console.error);
+                      triggerEvent(`bump_${activeId}`, other.id).catch(console.error);
+                      triggerEvent('bump_ANY', other.id).catch(console.error);
                   }
               } else {
                   if (activeCollisionsRef.current.has(pairId)) {
@@ -1342,7 +1347,7 @@ const App: React.FC = () => {
                           Scripts cannot be added to text objects.
                       </div>
                   ) : (
-                      <BlocklyEditor onCodeChange={setGeneratedCode} xml={currentWorkspaceXml} onXmlChange={handleXmlChange} onRunBlock={handleRunBlock} pages={pages} />
+                      <BlocklyEditor onCodeChange={setGeneratedCode} xml={currentWorkspaceXml} onXmlChange={handleXmlChange} onRunBlock={handleRunBlock} pages={pages} currentPageId={currentPageId} activeSpriteId={activeSpriteId} />
                   )}
               </div>
             </div>

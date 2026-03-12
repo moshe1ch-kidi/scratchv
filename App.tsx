@@ -1331,6 +1331,12 @@ const App: React.FC = () => {
       {!isPresentationMode && (
         <nav className="h-24 px-4 flex items-center justify-center shrink-0 relative z-20 shadow-md" style={{ backgroundColor: '#4B8CC2' }}>
          <div className="flex items-center gap-4">
+            <img 
+                src="https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/VerticalJrlogo1.png" 
+                alt="VerticalJr Logo" 
+                className="h-20 w-auto" 
+                style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.2))' }}
+            />
             <NavButton icon="fas fa-save" alt="Save Project" onClick={handleSaveProject} />
             <NavButton icon="fas fa-folder-open" alt="Load Project" onClick={handleLoadProject} />
             <div className="w-px h-16 bg-slate-300/50 mx-2"></div>

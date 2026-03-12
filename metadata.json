@@ -1,6 +1,6 @@
 {
-  "name": "Blockly AI Master3",
-  "description": "An advanced training environment for learning programming with blocks (Blockly) featuring a personal AI tutor.",
+  "name": "VerticalJr",
+  "description": "SCRATCHJR - Coding software for kids with stories, adapted for computers as a web application.",
   "requestFramePermissions": [
     "microphone"
   ]

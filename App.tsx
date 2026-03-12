@@ -237,6 +237,7 @@ const App: React.FC = () => {
 
   const eventListenersRef = useRef<Record<string, { spriteId: string | null; callback: Function }[]>>({});
   const executionControllerRef = useRef({ stop: false });
+  const lastYieldTimeRef = useRef<number>(0);
   const activeCollisionsRef = useRef<Set<string>>(new Set()); // Tracks active collision pairs
   const longPressTimerRef = useRef<number | null>(null);
   const longPressCompleted = useRef(false);
@@ -418,15 +419,26 @@ const App: React.FC = () => {
 
       // FIX: Changed wait to reject on stop instead of throwing to prevent Uncaught Errors
       // IMPROVEMENT: Use requestAnimationFrame for 0 delay to sync with refresh rate for smooth loops
+      // FIX: Only yield to requestAnimationFrame if 16ms have passed to prevent 1-frame stutter in loops
       const wait = (tenths: number) => {
         return new Promise<void>((resolve, reject) => {
           if (tenths === 0) {
-             requestAnimationFrame(() => {
-                if (!executionControllerRef.current.stop) resolve();
-                else reject(new Error('EXECUTION_STOPPED'));
-             });
+             const now = performance.now();
+             if (now - lastYieldTimeRef.current > 16) {
+                 requestAnimationFrame(() => {
+                    lastYieldTimeRef.current = performance.now();
+                    if (!executionControllerRef.current.stop) resolve();
+                    else reject(new Error('EXECUTION_STOPPED'));
+                 });
+             } else {
+                 Promise.resolve().then(() => {
+                    if (!executionControllerRef.current.stop) resolve();
+                    else reject(new Error('EXECUTION_STOPPED'));
+                 });
+             }
           } else {
              setTimeout(() => {
+                lastYieldTimeRef.current = performance.now();
                 if (!executionControllerRef.current.stop) resolve();
                 else reject(new Error('EXECUTION_STOPPED'));
              }, tenths * 100);
@@ -476,7 +488,16 @@ const App: React.FC = () => {
             let start: number | null = null;
             const step = (timestamp: number) => {
                 if (executionControllerRef.current.stop) return reject(new Error('EXECUTION_STOPPED'));
-                if (!start) start = timestamp;
+                
+                // If start is not null, this step was called by requestAnimationFrame, so we yielded.
+                if (start !== null) {
+                    lastYieldTimeRef.current = performance.now();
+                }
+
+                if (!start) {
+                    // Start immediately with 1 frame of elapsed time to prevent stuttering in loops
+                    start = timestamp - 16.66;
+                }
                 const elapsed = timestamp - start;
                 const progress = Math.min(elapsed / safeDuration, 1);
                 
@@ -495,7 +516,9 @@ const App: React.FC = () => {
                     resolve();
                 }
             };
-            requestAnimationFrame(step);
+            
+            // Start the first frame immediately to eliminate the 1-frame delay when chaining
+            step(performance.now());
         });
       };
       

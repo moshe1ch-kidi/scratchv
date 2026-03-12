@@ -61,7 +61,7 @@ const registerTallRenderer = () => {
                 this.ROW_HEIGHT = 80;       // Increased for uniform block height
                 this.FIELD_BORDER_RECT_Y_PADDING = 12; 
                 this.FIELD_BORDER_RECT_HEIGHT = 32;
-                this.FIELD_BORDER_RECT_X_PADDING = 10;
+                this.FIELD_BORDER_RECT_X_PADDING = 4; // Reduced from 10 to make dropdowns narrower
             }
         }
 
@@ -573,7 +573,16 @@ const generatePageIcon = (background: string, number: number) => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let getPageOptions: () => any[][] = () => [[{src: generatePageIcon('#ffffff', 1), width: 60, height: 50, alt: 'Page 1'}, '1']];
 
+// Dynamic provider for sprite options
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let getSpriteOptions: () => any[][] = () => [[{src: `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><polygon points="6,10 18,10 12,18" fill="#000000"/></svg>')}`, width: 24, height: 24, alt: 'Any Sprite'}, 'ANY']];
+
 const initializeBlocks = () => {
+    // Remove the dropdown arrow character globally to save space and match the design
+    (Blockly.FieldDropdown as any).ARROW_CHAR = '';
+    
+    const TRANSPARENT_1X1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    
     /**
      * Helper to create an image dropdown that adds tooltips to its items.
      * It overrides the showEditor_ method to post-process the DOM after rendering.
@@ -583,6 +592,8 @@ const initializeBlocks = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const createImageDropdownWithTooltips = (options: any) => {
         const dropdown = new Blockly.FieldDropdown(options);
+        // Remove the dropdown arrow character completely to save space
+        (dropdown as any).ARROW_CHAR = '';
         const originalShowEditor = (dropdown as any).showEditor_;
         
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -591,8 +602,18 @@ const initializeBlocks = () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const self = this as any;
             
+            // Temporarily override getOptions to hide 'ANY' from the menu
+            const originalGetOptions = self.getOptions;
+            self.getOptions = function(useCache?: boolean) {
+                const options = originalGetOptions.call(this, useCache);
+                return options.filter((opt: any) => opt[1] !== 'ANY');
+            };
+            
             // Call original function to render the menu
             originalShowEditor.call(self);
+            
+            // Restore original getOptions
+            self.getOptions = originalGetOptions;
             
             // Now that the menu is rendered, we can access its DOM elements
             const menu = self.menu_ as Blockly.Menu;
@@ -602,7 +623,7 @@ const initializeBlocks = () => {
             // which may not be in the type definitions but exist on the object at runtime.
             // The `typeof` check already ensures runtime safety.
             if (menu && menu.getElement() && typeof (menu as any).getChildCount === 'function') {
-                const menuOptions = self.getOptions(false);
+                const menuOptions = self.getOptions(false).filter((opt: any) => opt[1] !== 'ANY');
                 const childCount = (menu as any).getChildCount();
 
                 for (let i = 0; i < childCount; i++) {
@@ -615,9 +636,11 @@ const initializeBlocks = () => {
                     const optionData = menuOptions[i][0]; // The image object
                     const menuItemElement = menuItem.getElement();
                     
-                    // Add a 'title' attribute to the menu item's DOM element for the tooltip
-                    if (menuItemElement && typeof optionData === 'object' && optionData.alt) {
-                        menuItemElement.setAttribute('title', optionData.alt);
+                    if (menuItemElement) {
+                        // Add a 'title' attribute to the menu item's DOM element for the tooltip
+                        if (typeof optionData === 'object' && optionData.alt) {
+                            menuItemElement.setAttribute('title', optionData.alt);
+                        }
                     }
                 }
             }
@@ -637,9 +660,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 8, 24, "*"))
                 .appendField(new Blockly.FieldImage(ICONS.flag, 64, 64, "*"))
-                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 32, 24, "*"));
             this.setNextStatement(true, null);
             this.setColour(COLORS.TRIGGER);
             this.setTooltip("Start on Green Flag");
@@ -651,9 +674,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 8, 24, "*"))
                 .appendField(new Blockly.FieldImage(ICONS.tap, 64, 64, "*"))
-                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 32, 24, "*"));
             this.setNextStatement(true, null);
             this.setColour(COLORS.TRIGGER);
             this.setTooltip("Start on Tap");
@@ -664,9 +687,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 8, 24, "*"))
                 .appendField(new Blockly.FieldImage(ICONS.bump, 64, 64, "*"))
-                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+                .appendField(createImageDropdownWithTooltips(() => getSpriteOptions() as any), "SPRITE_ID");
             this.setNextStatement(true, null);
             this.setColour(COLORS.TRIGGER);
             this.setTooltip("Start on Bump");
@@ -677,7 +700,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField(createImageDropdownWithTooltips(ENVELOPE_OPTIONS as any), "COLOR");
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 18, 24, "*"))
+                .appendField(createImageDropdownWithTooltips(ENVELOPE_OPTIONS as any), "COLOR")
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 18, 24, "*"));
             this.setNextStatement(true, null);
             this.setColour(COLORS.TRIGGER);
             this.setTooltip("On Message");
@@ -688,7 +713,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField(createImageDropdownWithTooltips(SEND_ENVELOPE_OPTIONS as any), "COLOR");
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 18, 24, "*"))
+                .appendField(createImageDropdownWithTooltips(SEND_ENVELOPE_OPTIONS as any), "COLOR")
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 18, 24, "*"));
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLORS.TRIGGER); // Still yellow like triggers
@@ -1096,9 +1123,11 @@ interface BlocklyEditorProps {
   onXmlChange: (xml: string) => void;
   onRunBlock: (code: string) => void;
   pages: Page[];
+  currentPageId: string;
+  activeSpriteId: string | null;
 }
 
-const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlChange, onRunBlock, pages }) => {
+const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlChange, onRunBlock, pages, currentPageId, activeSpriteId }) => {
   const blocklyDiv = React.useRef<HTMLDivElement>(null);
   const workspaceRef = React.useRef<Blockly.WorkspaceSvg | null>(null);
   // Cache for fetched images to avoid repeated fetches
@@ -1167,6 +1196,37 @@ const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlC
 
     return () => { isMounted = false; };
   }, [pages]);
+
+  // Update dynamic sprite options
+  React.useEffect(() => {
+    const currentPage = pages.find(p => p.id === currentPageId);
+    if (!currentPage) return;
+    
+    const anySpriteSvg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+        <polygon points="6,10 18,10 12,18" fill="#000000"/>
+    </svg>`;
+    const anySpriteSrc = `data:image/svg+xml;base64,${btoa(anySpriteSvg)}`;
+
+    const spriteOptions: any[][] = [[{src: anySpriteSrc, width: 24, height: 24, alt: 'Any Sprite'}, 'ANY']];
+    
+    currentPage.sprites.forEach(sprite => {
+      if (sprite.id === activeSpriteId) return; // Character does not collide with itself
+      
+      let src = sprite.costume;
+      if (sprite.type === 'text') {
+          const textSvg = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+              <rect width="40" height="40" rx="4" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+              <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#334155">T</text>
+          </svg>`;
+          src = `data:image/svg+xml;base64,${btoa(textSvg)}`;
+      }
+      spriteOptions.push([{src: src, width: 40, height: 40, alt: sprite.name}, sprite.id]);
+    });
+    
+    getSpriteOptions = () => spriteOptions;
+  }, [pages, currentPageId, activeSpriteId]);
 
   // Update toolbox dynamically
   React.useEffect(() => {
@@ -1262,8 +1322,10 @@ const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlC
                   fullCode += `register('flag', async () => {\n${chainCode}\n});\n`; break;
               case 'event_tap':
                   fullCode += `register('tap', async () => {\n${chainCode}\n});\n`; break;
-              case 'event_bump':
-                  fullCode += `register('bump', async () => {\n${chainCode}\n});\n`; break;
+              case 'event_bump': {
+                  const targetSpriteId = block.getFieldValue('SPRITE_ID') || 'ANY';
+                  fullCode += `register('bump_' + '${targetSpriteId}', async () => {\n${chainCode}\n});\n`; break;
+              }
               case 'event_message':
                    const msgColor = block.getFieldValue('COLOR');
                    fullCode += `register('message_' + '${msgColor}', async () => {\n${chainCode}\n});\n`; break;

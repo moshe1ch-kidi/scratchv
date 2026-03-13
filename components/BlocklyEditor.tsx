@@ -62,6 +62,10 @@ const registerTallRenderer = () => {
                 this.FIELD_BORDER_RECT_Y_PADDING = 12; 
                 this.FIELD_BORDER_RECT_HEIGHT = 32;
                 this.FIELD_BORDER_RECT_X_PADDING = 4; // Reduced from 10 to make dropdowns narrower
+                this.NOTCH_HEIGHT = 6;  // Shallower for trapezoidal shape
+                this.NOTCH_WIDTH = 16;  // Wider for trapezoidal shape
+                this.TAB_HEIGHT = 6;    // Shallower for trapezoidal shape
+                this.TAB_WIDTH = 16;    // Wider for trapezoidal shape
             }
         }
 

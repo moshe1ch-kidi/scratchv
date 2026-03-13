@@ -1,6 +1,6 @@
 {
-  "name": "VerticalJr",
-  "description": "SCRATCHJR - Coding software for kids with stories, adapted for computers as a web application.",
+  "name": "stack kidi",
+  "description": "Building the future with STACK KIDI! The first coding app that combines the simplicity of visual blocks with a professional vertical structure. Specially designed for ages 6-9 to develop logical thinking, creativity, and coding fundamentals..",
   "requestFramePermissions": [
     "microphone"
   ]

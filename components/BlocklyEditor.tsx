@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+ import React, { useState, useRef } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import * as En from 'blockly/msg/en';
@@ -521,22 +521,22 @@ const CATEGORY_BG_COLORS: Record<string, string> = {
 
 // Graphical Envelopes for Receive block
 const ENVELOPE_OPTIONS = [
-    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Orange.svg', 'width': 60, 'height': 50, 'alt': 'Orange'}, 'orange'],
-    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Red.svg', 'width': 60, 'height': 50, 'alt': 'Red'}, 'red'],
-    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Yellow.svg', 'width': 60, 'height': 50, 'alt': 'Yellow'}, 'yellow'],
-    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Green.svg', 'width': 60, 'height': 50, 'alt': 'Green'}, 'green'],
-    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Blue.svg', 'width': 60, 'height': 50, 'alt': 'Blue'}, 'blue'],
-    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Purple.svg', 'width': 60, 'height': 50, 'alt': 'Purple'}, 'purple'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Orange.svg', 'width': 48, 'height': 48, 'alt': 'Orange'}, 'orange'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Red.svg', 'width': 48, 'height': 48, 'alt': 'Red'}, 'red'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Yellow.svg', 'width': 48, 'height': 48, 'alt': 'Yellow'}, 'yellow'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Green.svg', 'width': 48, 'height': 48, 'alt': 'Green'}, 'green'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Blue.svg', 'width': 48, 'height': 48, 'alt': 'Blue'}, 'blue'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterGet_Purple.svg', 'width': 48, 'height': 48, 'alt': 'Purple'}, 'purple'],
 ];
 
 // Graphical Envelopes for Send block
 const SEND_ENVELOPE_OPTIONS = [
-    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Orange.svg', 'width': 60, 'height': 50, 'alt': 'Orange'}, 'orange'],
-    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Red.svg', 'width': 60, 'height': 50, 'alt': 'Red'}, 'red'],
-    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Yellow.svg', 'width': 60, 'height': 50, 'alt': 'Yellow'}, 'yellow'],
-    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Green.svg', 'width': 60, 'height': 50, 'alt': 'Green'}, 'green'],
-    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Blue.svg', 'width': 60, 'height': 50, 'alt': 'Blue'}, 'blue'],
-    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Purple.svg', 'width': 60, 'height': 50, 'alt': 'Purple'}, 'purple'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Orange.svg', 'width': 48, 'height': 48, 'alt': 'Orange'}, 'orange'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Red.svg', 'width': 48, 'height': 48, 'alt': 'Red'}, 'red'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Yellow.svg', 'width': 48, 'height': 48, 'alt': 'Yellow'}, 'yellow'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Green.svg', 'width': 48, 'height': 48, 'alt': 'Green'}, 'green'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Blue.svg', 'width': 48, 'height': 48, 'alt': 'Blue'}, 'blue'],
+    [{'src': 'https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/LetterSend_Purple.svg', 'width': 48, 'height': 48, 'alt': 'Purple'}, 'purple'],
 ];
 
 // Graphical options for Set Speed block
@@ -691,7 +691,7 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 8, 24, "*"))
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 13, 24, "*"))
                 .appendField(new Blockly.FieldImage(ICONS.bump, 64, 64, "*"))
                 .appendField(createImageDropdownWithTooltips(() => getSpriteOptions() as any), "SPRITE_ID");
             this.setNextStatement(true, null);
@@ -704,9 +704,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 18, 24, "*"))
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 28, 24, "*"))
                 .appendField(createImageDropdownWithTooltips(ENVELOPE_OPTIONS as any), "COLOR")
-                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 18, 24, "*"));
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 28, 24, "*"));
             this.setNextStatement(true, null);
             this.setColour(COLORS.TRIGGER);
             this.setTooltip("On Message");
@@ -717,9 +717,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 18, 24, "*"))
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 28, 24, "*"))
                 .appendField(createImageDropdownWithTooltips(SEND_ENVELOPE_OPTIONS as any), "COLOR")
-                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 18, 24, "*"));
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 28, 24, "*"));
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLORS.TRIGGER); // Still yellow like triggers
@@ -738,8 +738,9 @@ const initializeBlocks = () => {
             init: function() {
                 const input = this.appendDummyInput().setAlign(Blockly.inputs.Align.CENTRE);
                 input.appendField(new Blockly.FieldImage(iconUrl, 64, 64, "*"));
+                input.appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 10, 24, "*"));
                 input.appendField(new Number99Field(defaultVal), "STEPS");
-                input.appendField(new Blockly.FieldLabel('\u00A0\u00A0')); // Add spacer for uniform width
+                input.appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 24, 24, "*"));
                 this.setPreviousStatement(true, null);
                 this.setNextStatement(true, null);
                 this.setColour(COLORS.MOTION);
@@ -907,7 +908,9 @@ const initializeBlocks = () => {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
                 .appendField(new Blockly.FieldImage(ICONS.wait, 64, 64, "*"))
-                .appendField(new Number99Field(10), "MS");
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 10, 24, "*"))
+                .appendField(new Number99Field(10), "STEPS")
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 15, 24, "*"));
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLORS.CONTROL);
@@ -923,9 +926,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(ICONS.transparent, 20, 24, "*"))
                 .appendField(new Blockly.FieldImage("https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Stop.svg", 64, 64, "*"))
-                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 20, 24, "*"));
             this.setPreviousStatement(true, null);
             this.setNextStatement(false, null);
             this.setColour(COLORS.CONTROL);
@@ -938,7 +941,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField(createImageDropdownWithTooltips(SPEED_OPTIONS as any), "SPEED");
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 20, 24, "*"))
+                .appendField(createImageDropdownWithTooltips(SPEED_OPTIONS as any), "SPEED")
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 20, 24, "*"));
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLORS.CONTROL);
@@ -955,7 +960,9 @@ const initializeBlocks = () => {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
                 .appendField(new Blockly.FieldImage(ICONS.repeat, 64, 64, "*"))
-                .appendField(new Number99Field(4), "TIMES");
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 10, 24, "*"))
+                .appendField(new Number99Field(4), "TIMES")
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 10, 24, "*"));
             this.appendStatementInput("DO").setCheck(null);
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
@@ -976,9 +983,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 20, 24, "*"))
                 .appendField(new Blockly.FieldImage(ICONS.forever, 64, 64, "*"))
-                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 20, 24, "*"));
             this.appendStatementInput("DO").setCheck(null);
             this.setPreviousStatement(true, null);
             this.setColour(COLORS.END);
@@ -1014,8 +1021,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField(new Blockly.FieldImage(ICONS.transparent, 20, 24, "*"))
                 .appendField(new Blockly.FieldImage(ICONS.transparent, 64, 64, "*"))
-                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for number field width
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 20, 24, "*"));
             this.setPreviousStatement(true, null);
             this.setNextStatement(false, null); // Explicitly no next connection
             this.setColour(COLORS.END);

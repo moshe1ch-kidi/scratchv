@@ -1,4 +1,4 @@
- import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import * as En from 'blockly/msg/en';
@@ -497,6 +497,7 @@ const ICONS = {
     // End
     forever: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/Forever.svg",
     gotoPage: "https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/blockicons/GoToPage.svg",
+    end: "https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/checkeredflag.svg",
     transparent: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PC9zdmc+",
 };
 
@@ -1021,8 +1022,8 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField(new Blockly.FieldImage(ICONS.transparent, 20, 24, "*"))
-                .appendField(new Blockly.FieldImage(ICONS.transparent, 64, 64, "*"))
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 20, 24, "*"))
+                .appendField(new Blockly.FieldImage(ICONS.end, 64, 64, "*"))
                 .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 20, 24, "*"));
             this.setPreviousStatement(true, null);
             this.setNextStatement(false, null); // Explicitly no next connection

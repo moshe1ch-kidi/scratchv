@@ -509,6 +509,8 @@ const COLORS = {
     END: '#D0021B'      // Red
 };
 
+const TRANSPARENT_1X1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
 // Map of category names to their lighter background colors
 const CATEGORY_BG_COLORS: Record<string, string> = {
     'Events': '#FEF9C3',  // Lighter Yellow
@@ -584,8 +586,6 @@ let getSpriteOptions: () => any[][] = () => [[{src: `data:image/svg+xml;base64,$
 const initializeBlocks = () => {
     // Remove the dropdown arrow character globally to save space and match the design
     (Blockly.FieldDropdown as any).ARROW_CHAR = '';
-    
-    const TRANSPARENT_1X1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
     
     /**
      * Helper to create an image dropdown that adds tooltips to its items.
@@ -737,10 +737,10 @@ const initializeBlocks = () => {
         Blockly.Blocks[type] = {
             init: function() {
                 const input = this.appendDummyInput().setAlign(Blockly.inputs.Align.CENTRE);
+                input.appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 8, 24, "*"));
                 input.appendField(new Blockly.FieldImage(iconUrl, 64, 64, "*"));
-                input.appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 10, 24, "*"));
                 input.appendField(new Number99Field(defaultVal), "STEPS");
-                input.appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 24, 24, "*"));
+                input.appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 16, 24, "*"));
                 this.setPreviousStatement(true, null);
                 this.setNextStatement(true, null);
                 this.setColour(COLORS.MOTION);
@@ -798,9 +798,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 8, 24, "*"))
                 .appendField(new Blockly.FieldImage(ICONS.grow, 64, 64, "*"))
-                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 32, 24, "*"));
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLORS.LOOKS);
@@ -813,9 +813,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 8, 24, "*"))
                 .appendField(new Blockly.FieldImage(ICONS.shrink, 64, 64, "*"))
-                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 32, 24, "*"));
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLORS.LOOKS);
@@ -828,9 +828,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 8, 24, "*"))
                 .appendField(new Blockly.FieldImage(ICONS.resetSize, 64, 64, "*"))
-                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 32, 24, "*"));
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLORS.LOOKS);
@@ -843,9 +843,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 8, 24, "*"))
                 .appendField(new Blockly.FieldImage(ICONS.hide, 64, 64, "*"))
-                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 32, 24, "*"));
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLORS.LOOKS);
@@ -858,9 +858,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 8, 24, "*"))
                 .appendField(new Blockly.FieldImage(ICONS.show, 64, 64, "*"))
-                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 32, 24, "*"));
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLORS.LOOKS);
@@ -874,9 +874,9 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
-                .appendField('  ') // Spacer to move icon right
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 8, 24, "*"))
                 .appendField(new Blockly.FieldImage(ICONS.pop, 64, 64, "*"))
-                .appendField(new Blockly.FieldLabel('\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0')); // Spacer for width
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 32, 24, "*"));
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLORS.SOUND);
@@ -907,10 +907,10 @@ const initializeBlocks = () => {
         init: function() {
             this.appendDummyInput()
                 .setAlign(Blockly.inputs.Align.CENTRE)
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 8, 24, "*"))
                 .appendField(new Blockly.FieldImage(ICONS.wait, 64, 64, "*"))
-                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 10, 24, "*"))
                 .appendField(new Number99Field(10), "STEPS")
-                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 15, 24, "*"));
+                .appendField(new Blockly.FieldImage(TRANSPARENT_1X1, 8, 24, "*"));
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLORS.CONTROL);

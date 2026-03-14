@@ -27,7 +27,11 @@ const BACKGROUND_URLS = [
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/main/bg/nightcity.svg',
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/main/bg/vilage.svg',
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/fileD.svg',
-  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/aquarium.svg'
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/aquarium.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/way1.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/way.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/hills1.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/hills.svg'
 ];
 
 interface BackgroundGalleryProps {

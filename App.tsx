@@ -66,7 +66,7 @@ const createNewTextSprite = (): Sprite => ({
 });
 
 const createNewPage = (name: string): Page => {
-    const initialSprite = createNewSprite('Cat', 'https://codejredu.github.io/jr/scratchjr/svglibrary/cat1.svg');
+    const initialSprite = createNewSprite('Panda', 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/psndamain.svg');
     return {
         id: `page-${Date.now()}-${Math.random()}`,
         name,

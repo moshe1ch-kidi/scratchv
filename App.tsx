@@ -70,7 +70,7 @@ const createNewPage = (name: string): Page => {
     return {
         id: `page-${Date.now()}-${Math.random()}`,
         name,
-        background: '#ffffff',
+        background: 'url(https://codejredu.github.io/jr/scratchjr/svglibrary/Spring.svg)',
         sprites: [initialSprite],
     };
 };
@@ -203,6 +203,7 @@ const App: React.FC = () => {
   const [isBgGalleryOpen, setIsBgGalleryOpen] = useState(false);
   const [isPaintEditorOpen, setIsPaintEditorOpen] = useState(false);
   const [isCodingCardsOpen, setIsCodingCardsOpen] = useState(false);
+  const [isReloadConfirmOpen, setIsReloadConfirmOpen] = useState(false);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [pagesPanelWidth, setPagesPanelWidth] = useState(140); // Approx w-36
   const [editingSprite, setEditingSprite] = useState<Sprite | null>(null);
@@ -1308,8 +1309,34 @@ const App: React.FC = () => {
     document.body.removeChild(input);
   }, [handleStop, setAndSyncRuntimeSpriteStates]);
 
+  const handleReload = useCallback(() => {
+    window.location.reload();
+  }, []);
+
   return (
     <div className="flex flex-col h-screen bg-[#FDFCF8] overflow-hidden font-sans select-none">
+      {isReloadConfirmOpen && (
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full text-center">
+            <h3 className="text-xl font-bold text-slate-800 mb-4">Reload Application?</h3>
+            <p className="text-slate-600 mb-6">Any unsaved changes will be lost. Please make sure to save your project before reloading.</p>
+            <div className="flex gap-4 justify-center">
+              <button 
+                onClick={() => setIsReloadConfirmOpen(false)}
+                className="px-6 py-2 bg-slate-200 hover:bg-slate-300 rounded-full font-bold text-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleReload}
+                className="px-6 py-2 bg-red-500 hover:bg-red-600 rounded-full font-bold text-white transition-colors"
+              >
+                Reload
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {isGalleryOpen && <SpriteGallery onClose={() => setIsGalleryOpen(false)} onSelect={handleAddSpriteFromGallery} onPaintNew={handleOpenPaintEditorForNew} />}
       {isBgGalleryOpen && <BackgroundGallery onClose={() => setIsBgGalleryOpen(false)} onSelect={handleBackgroundSelect} />}
       {isPaintEditorOpen && <PaintEditor 
@@ -1339,6 +1366,7 @@ const App: React.FC = () => {
             />
             <NavButton icon="fas fa-save" alt="Save Project" onClick={handleSaveProject} />
             <NavButton icon="fas fa-folder-open" alt="Load Project" onClick={handleLoadProject} />
+            <NavButton icon="fas fa-sync-alt" alt="Reload App" onClick={() => setIsReloadConfirmOpen(true)} />
             <div className="w-px h-16 bg-slate-300/50 mx-2"></div>
             <NavButton icon="fas fa-book-open" alt="Coding Cards" onClick={() => setIsCodingCardsOpen(true)} />
             <NavButton src="https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/ui/fullOff2.svg" alt="Presentation Mode" onClick={handleTogglePresentationMode} />

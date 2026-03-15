@@ -4,7 +4,7 @@ const SPRITE_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Aeroplane.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Astronaut.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Bus.svg',
-  'https://codejredu.github.io/jr/scratchjr/svglibrary/Camel.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/camel.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Car.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Car1.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Fort.svg',

@@ -28,7 +28,7 @@ const SPRITE_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/NightTable.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Penguin.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Purple.svg',
-  'https://codejredu.github.io/jr/scratchjr/svglibrary/Rabbit.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/rabbit.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Rancher.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Red.svg',
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Rocket.svg',
@@ -87,7 +87,12 @@ const SPRITE_URLS = [
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/firer.svg',
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/missle.svg',
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/football.svg',
-  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/psndamain.svg'
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/psndamain.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/3dmoustang.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/3djagouar.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/3dbentez.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/3dcorvet.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/3dmaeck.svg'
 ];
 
 interface SpriteGalleryProps {

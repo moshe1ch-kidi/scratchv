@@ -8,6 +8,7 @@ import BackgroundGallery from './components/BackgroundGallery';
 import PaintEditor from './components/PaintEditor';
 import TextEditor from './components/TextEditor';
 import CodingCards from './components/CodingCards';
+import AboutModal from './components/AboutModal';
 import { Page, Sprite, SpriteState } from './types';
 
 // Grid constants, must match Stage.tsx
@@ -204,6 +205,7 @@ const App: React.FC = () => {
   const [isPaintEditorOpen, setIsPaintEditorOpen] = useState(false);
   const [isCodingCardsOpen, setIsCodingCardsOpen] = useState(false);
   const [isReloadConfirmOpen, setIsReloadConfirmOpen] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [pagesPanelWidth, setPagesPanelWidth] = useState(140); // Approx w-36
   const [editingSprite, setEditingSprite] = useState<Sprite | null>(null);
@@ -1354,16 +1356,23 @@ const App: React.FC = () => {
           initialSprite={editingSprite}
       />}
       {isCodingCardsOpen && <CodingCards onClose={() => setIsCodingCardsOpen(false)} />}
+      {isAboutOpen && <AboutModal onClose={() => setIsAboutOpen(false)} />}
       
       {!isPresentationMode && (
         <nav className="h-24 px-4 flex items-center justify-center shrink-0 relative z-20 shadow-md" style={{ backgroundColor: '#4B8CC2' }}>
          <div className="flex items-center gap-4">
-            <img 
-                src="https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/VerticalJrlogo1.png" 
-                alt="VerticalJr Logo" 
-                className="h-20 w-auto" 
-                style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.2))' }}
-            />
+            <button 
+                onClick={() => setIsAboutOpen(true)}
+                className="focus:outline-none focus:ring-2 focus:ring-blue-300 rounded-lg transition-transform hover:scale-105 active:scale-95"
+                title="About STACKKIDI"
+            >
+                <img 
+                    src="https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/VerticalJrlogo1.png" 
+                    alt="VerticalJr Logo" 
+                    className="h-20 w-auto" 
+                    style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.2))' }}
+                />
+            </button>
             <NavButton icon="fas fa-save" alt="Save Project" onClick={handleSaveProject} />
             <NavButton icon="fas fa-folder-open" alt="Load Project" onClick={handleLoadProject} />
             <NavButton icon="fas fa-sync-alt" alt="Reload App" onClick={() => setIsReloadConfirmOpen(true)} />

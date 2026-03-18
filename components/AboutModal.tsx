@@ -12,7 +12,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ onClose }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || !email.trim()) return;
 
     setStatus('submitting');
     
@@ -85,9 +85,10 @@ const AboutModal: React.FC<AboutModalProps> = ({ onClose }) => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-600 mb-1">Email</label>
+                    <label className="block text-sm font-bold text-slate-600 mb-1">Email *</label>
                     <input 
                       type="email" 
+                      required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#4B8CC2] transition-all"

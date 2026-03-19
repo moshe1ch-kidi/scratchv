@@ -97,7 +97,13 @@ const SPRITE_URLS = [
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/kid3.svg',
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/kid2.svg',
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/kid1.svg',
-  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/horse1.svg'
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/horse1.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anicopter.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/car1.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/brid3.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/bird2.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/bird2.gif',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anipiqrnAXrT.svg'
 ];
 
 interface SpriteGalleryProps {

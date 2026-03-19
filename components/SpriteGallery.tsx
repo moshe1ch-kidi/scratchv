@@ -1,16 +1,17 @@
  import React, { useState, useMemo } from 'react';
 
 const SPRITE_CATEGORIES = {
-  all: 'All',
-  animals: 'Animals',
-  people: 'People',
-  vehicles: 'Vehicles',
-  nature: 'Nature',
-  items: 'Items'
+  all: { label: 'All', icon: 'fas fa-th-large' },
+  animals: { label: 'Animals', icon: 'fas fa-dove' },
+  people: { label: 'People', icon: 'fas fa-users' },
+  vehicles: { label: 'Vehicles', icon: 'fas fa-car' },
+  aircraft: { label: 'Aircraft', icon: 'fas fa-plane' },
+  nature: { label: 'Nature', icon: 'fas fa-leaf' },
+  items: { label: 'Items', icon: 'fas fa-box-open' }
 };
 
 const SPRITES = [
-  { url: 'https://codejredu.github.io/jr/scratchjr/svglibrary/Aeroplane.svg', category: 'vehicles' },
+  { url: 'https://codejredu.github.io/jr/scratchjr/svglibrary/Aeroplane.svg', category: 'aircraft' },
   { url: 'https://codejredu.github.io/jr/scratchjr/svglibrary/Astronaut.svg', category: 'people' },
   { url: 'https://codejredu.github.io/jr/scratchjr/svglibrary/Bus.svg', category: 'vehicles' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/camel.svg', category: 'animals' },
@@ -40,7 +41,7 @@ const SPRITES = [
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/rabbit.svg', category: 'animals' },
   { url: 'https://codejredu.github.io/jr/scratchjr/svglibrary/Rancher.svg', category: 'people' },
   { url: 'https://codejredu.github.io/jr/scratchjr/svglibrary/Red.svg', category: 'items' },
-  { url: 'https://codejredu.github.io/jr/scratchjr/svglibrary/Rocket.svg', category: 'vehicles' },
+  { url: 'https://codejredu.github.io/jr/scratchjr/svglibrary/Rocket.svg', category: 'aircraft' },
   { url: 'https://codejredu.github.io/jr/scratchjr/svglibrary/Rowboat.svg', category: 'vehicles' },
   { url: 'https://codejredu.github.io/jr/scratchjr/svglibrary/SailBoat.svg', category: 'vehicles' },
   { url: 'https://codejredu.github.io/jr/scratchjr/svglibrary/Scubadiver.svg', category: 'people' },
@@ -94,9 +95,9 @@ const SPRITES = [
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/fish-2.svg', category: 'animals' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/fish-3.svg', category: 'animals' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/firer.svg', category: 'items' },
-  { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/missle.svg', category: 'items' },
+  { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/missle.svg', category: 'aircraft' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/football.svg', category: 'items' },
-  { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/psndamain.svg', category: 'items' },
+  { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/psndamain.svg', category: 'animals' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/3dmoustang.svg', category: 'vehicles' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/3djagouar.svg', category: 'vehicles' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/3dbentez.svg', category: 'vehicles' },
@@ -107,7 +108,7 @@ const SPRITES = [
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/kid2.svg', category: 'people' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/kid1.svg', category: 'people' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/horse1.svg', category: 'animals' },
-  { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anicopter.svg', category: 'vehicles' },
+  { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anicopter.svg', category: 'aircraft' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/car1.svg', category: 'vehicles' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/brid3.svg', category: 'animals' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/bird2.svg', category: 'animals' },
@@ -147,17 +148,18 @@ const SpriteGallery: React.FC<SpriteGalleryProps> = ({ onClose, onSelect, onPain
 
         {/* Categories Tabs */}
         <div className="px-4 py-2 border-b border-slate-200 bg-white flex gap-2 overflow-x-auto no-scrollbar shrink-0">
-          {Object.entries(SPRITE_CATEGORIES).map(([id, label]) => (
+          {Object.entries(SPRITE_CATEGORIES).map(([id, category]) => (
             <button
               key={id}
               onClick={() => setActiveCategory(id as any)}
-              className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all whitespace-nowrap ${
+              title={category.label}
+              className={`px-4 py-2 rounded-xl text-xl transition-all whitespace-nowrap flex items-center justify-center min-w-[3rem] ${
                 activeCategory === id 
                   ? 'bg-blue-500 text-white shadow-md' 
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              {label}
+              <i className={category.icon}></i>
             </button>
           ))}
         </div>

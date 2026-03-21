@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useState, useLayoutEffect, useEffect } from 'react';
+ import React, { useRef, useMemo, useState, useLayoutEffect, useEffect } from 'react';
 import { Sprite, SpriteState } from '../types';
 
 // Grid constants
@@ -105,7 +105,7 @@ const SpriteCharacter: React.FC<{
         // Position the top-left corner of the div so that its center aligns with the calculated pixel center
         left: `${pixelCenterX - imageSize / 2}px`,
         bottom: `${pixelCenterY - imageSize / 2}px`,
-        width: sprite.type === 'text' ? 'auto' : `${imageSize}px`,
+        width: sprite.type === 'text' ? 'max-content' : `${imageSize}px`,
         height: sprite.type === 'text' ? 'auto' : `${imageSize}px`,
         zIndex: isDragging ? 100 : (sprite.type === 'text' ? 20 : 10),
     };
@@ -176,7 +176,7 @@ const SpriteCharacter: React.FC<{
             >
                 {sprite.type === 'text' && sprite.content ? (
                     <div
-                      className="font-bold drop-shadow-lg text-center whitespace-pre-wrap break-words select-none"
+                      className="font-bold drop-shadow-lg text-center whitespace-pre select-none"
                       style={{
                         color: sprite.color || '#000000',
                         fontSize: `${1 + (sprite.fontSize || 2) * 0.8}rem`,

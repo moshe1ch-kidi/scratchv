@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ import React, { useState, useEffect } from 'react';
 import { Sprite } from '../types';
 
 interface TextEditorProps {
@@ -72,14 +72,15 @@ const TextEditor: React.FC<TextEditorProps> = ({ sprite, isNew, onUpdate, onDele
     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl z-30" onClick={(e) => e.stopPropagation()}>
       <div className="bg-[#4a90e2] p-4 rounded-xl shadow-2xl border-2 border-white/50 flex flex-col items-center gap-4">
         {/* Text Input */}
-        <input
-          type="text"
+        <textarea
           value={text}
-          onChange={handleTextChange}
-          onKeyDown={handleKeyDown}
-          className="w-full bg-white rounded-lg p-3 text-2xl text-center font-bold border-2 border-slate-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+          onChange={(e) => {
+            setText(e.target.value);
+            onUpdate(sprite.id, { content: e.target.value });
+          }}
+          className="w-full bg-white rounded-lg p-3 text-2xl text-center font-bold border-2 border-slate-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 min-h-[120px] resize-none"
           autoFocus
-          maxLength={50}
+          maxLength={200}
         />
 
         {/* Controls */}

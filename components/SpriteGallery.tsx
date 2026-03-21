@@ -1,4 +1,4 @@
- import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 
 const SPRITE_CATEGORIES = {
   all: { label: 'All', icon: 'fas fa-th-large' },
@@ -118,7 +118,10 @@ const SPRITES = [
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/aniturtle.svg', category: 'animals' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anicat2.svg', category: 'animals' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anbicycle.svg', category: 'vehicles' },
-  { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anicar3.svg', category: 'vehicles' }
+  { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anicar3.svg', category: 'vehicles' },
+  { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anicock.svg', category: 'animals' },
+  { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anibutter.svg', category: 'animals' },
+  { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anitiger.svg', category: 'animals' }
 ];
 
 interface SpriteGalleryProps {

@@ -1,4 +1,4 @@
-import React from 'react';
+ import React from 'react';
 
 const BACKGROUND_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Arctic.svg',
@@ -35,7 +35,11 @@ const BACKGROUND_URLS = [
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/golan.svg',
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/vectorizedroad.svg',
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/main/bg/jungel.svg',
-  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/main/bg/snow.svg'
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/main/bg/snow.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/redroof.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/tress.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/greenfiled.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/city2.svg'
 ];
 
 interface BackgroundGalleryProps {

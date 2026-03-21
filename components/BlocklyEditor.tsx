@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+ import React, { useState, useRef } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import * as En from 'blockly/msg/en';
@@ -44,50 +44,8 @@ const registerGenerator = (blockName: string, generatorFn: (block: any) => strin
     }
 };
 
-// --- Custom Renderer for Taller Blocks ---
-const registerTallRenderer = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const B = Blockly as any;
-    
-    if (B.registry && B.registry.registry_ && B.registry.registry_['renderer'] && B.registry.registry_['renderer']['tall']) {
-        return;
-    }
-
-    if (B.geras && B.blockRendering) {
-        class TallConstantProvider extends B.geras.ConstantProvider {
-            constructor() {
-                super();
-                this.MIN_BLOCK_HEIGHT = 80; // Increased for uniform block height
-                this.ROW_HEIGHT = 80;       // Increased for uniform block height
-                this.FIELD_BORDER_RECT_Y_PADDING = 12; 
-                this.FIELD_BORDER_RECT_HEIGHT = 32;
-                this.FIELD_BORDER_RECT_X_PADDING = 4; // Reduced from 10 to make dropdowns narrower
-                this.NOTCH_HEIGHT = 6;  // Shallower for trapezoidal shape
-                this.NOTCH_WIDTH = 16;  // Wider for trapezoidal shape
-                this.TAB_HEIGHT = 6;    // Shallower for trapezoidal shape
-                this.TAB_WIDTH = 16;    // Wider for trapezoidal shape
-            }
-        }
-
-        class TallRenderer extends B.geras.Renderer {
-            constructor(name: string) {
-                super(name);
-            }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            makeConstants_() {
-                return new TallConstantProvider();
-            }
-        }
-
-        try {
-             B.blockRendering.register('tall', TallRenderer);
-        } catch(e) {
-            console.warn("Renderer registration failed", e);
-        }
-    }
-};
-
-registerTallRenderer();
+// --- Custom Renderer for Zelos ---
+// Zelos is built-in, so we just need to ensure it's used in the inject call.
 
 
 // --- Custom Field with Visual Numpad ---
@@ -1265,7 +1223,7 @@ const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ onCodeChange, xml, onXmlC
 
     const workspace = Blockly.inject(blocklyDiv.current, {
         toolbox: STANDARD_TOOLBOX,
-        renderer: 'tall',
+        renderer: 'zelos',
         rtl: false,
         scrollbars: true,
         trashcan: true,

@@ -484,9 +484,100 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
   }, [initialSprite]);
 
   useEffect(() => {
-    // Preserve the exact positions and sizes that the user saved.
-    // If users want to center their drawings, they can do so manually.
     if (isInitialLoadRef.current && shapes.length > 0) {
+        let totalBBox = { x: Infinity, y: Infinity, x2: -Infinity, y2: -Infinity };
+        let hasContent = false;
+
+        shapes.forEach(shape => {
+            const b = getBoundingBox(shape);
+            if (b.width > 0 || b.height > 0) {
+                hasContent = true;
+                const strokeOffset = (shape.strokeWidth || 0) / 2;
+                totalBBox.x = Math.min(totalBBox.x, b.x - strokeOffset);
+                totalBBox.y = Math.min(totalBBox.y, b.y - strokeOffset);
+                totalBBox.x2 = Math.max(totalBBox.x2, b.x + b.width + strokeOffset);
+                totalBBox.y2 = Math.max(totalBBox.y2, b.y + b.height + strokeOffset);
+            }
+        });
+
+        if (hasContent) {
+            const bboxWidth = totalBBox.x2 - totalBBox.x;
+            const bboxHeight = totalBBox.y2 - totalBBox.y;
+            const bboxCenterX = totalBBox.x + bboxWidth / 2;
+            const bboxCenterY = totalBBox.y + bboxHeight / 2;
+
+            const canvasWidth = 480;
+            const canvasHeight = 420;
+            const canvasCenterX = canvasWidth / 2;
+            const canvasCenterY = canvasHeight / 2;
+
+            // Heuristic for "Needs alignment":
+            // 1. Off-center significantly
+            // 2. Too big for canvas
+            // 3. Or it's a raw SVG from library (usually has coordinates around 0,0)
+            const distFromCenter = Math.sqrt(Math.pow(bboxCenterX - canvasCenterX, 2) + Math.pow(bboxCenterY - canvasCenterY, 2));
+            const isOffCenter = distFromCenter > 20;
+            const isTooLarge = bboxWidth > canvasWidth * 0.9 || bboxHeight > canvasHeight * 0.9;
+            const isTooSmall = bboxWidth < canvasWidth * 0.3 && bboxHeight < canvasHeight * 0.3;
+
+            if (isOffCenter || isTooLarge || isTooSmall) {
+                const padding = 60;
+                const availableWidth = canvasWidth - padding * 2;
+                const availableHeight = canvasHeight - padding * 2;
+
+                let scale = 1;
+                if (bboxWidth > 0 && bboxHeight > 0) {
+                    const scaleX = availableWidth / bboxWidth;
+                    const scaleY = availableHeight / bboxHeight;
+                    scale = Math.min(scaleX, scaleY);
+                    
+                    // Cap auto-scaling: don't make it tiny drawings fill the screen unless they are library sprites
+                    if (!isTooLarge && scale > 1.2) {
+                        // Only scale up if it's really tiny or if we want it to be a decent size
+                        scale = Math.min(scale, 1.2); 
+                    }
+                }
+
+                // If scale is near 1 and we only need centering
+                if (Math.abs(scale - 1) < 0.05 && isOffCenter) {
+                    scale = 1;
+                }
+
+                setShapes(prevShapes => prevShapes.map(s => {
+                    const newShape = { ...s };
+                    const transform = newShape.transform || '';
+                    const t = parseTransform(transform);
+                    
+                    // Map coordinate tx to new coordinate based on scaling around bbox center
+                    // P' = canvasCenter + (P - bboxCenter) * scale
+                    const newTx = canvasCenterX + (t.tx - bboxCenterX) * scale;
+                    const newTy = canvasCenterY + (t.ty - bboxCenterY) * scale;
+                    
+                    const scaleRegex = /scale\(([^)]+)\)/;
+                    const translateRegex = /translate\s*\(\s*([0-9-.]+)\s*[, ]*\s*([0-9-.]+)?\s*\)/;
+                    
+                    let currentS = 1;
+                    const sMatch = transform.match(scaleRegex);
+                    if (sMatch) currentS = parseFloat(sMatch[1]);
+                    
+                    const finalScale = currentS * scale;
+                    
+                    let newTransform = transform;
+                    if (sMatch) newTransform = newTransform.replace(scaleRegex, `scale(${finalScale.toFixed(4)})`);
+                    else newTransform = `${newTransform} scale(${finalScale.toFixed(4)})`.trim();
+                    
+                    if (newTransform.match(translateRegex)) {
+                        newTransform = newTransform.replace(translateRegex, `translate(${newTx.toFixed(2)}, ${newTy.toFixed(2)})`);
+                    } else {
+                        newTransform = `translate(${newTx.toFixed(2)}, ${newTy.toFixed(2)}) ${newTransform}`.trim();
+                    }
+                    
+                    newShape.transform = newTransform.replace(/\s+/g, ' ').trim();
+                    newShape.strokeWidth = (newShape.strokeWidth || 0) * scale;
+                    return newShape;
+                }));
+            }
+        }
         isInitialLoadRef.current = false;
     }
   }, [shapes]);

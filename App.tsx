@@ -1580,6 +1580,8 @@ const App: React.FC = () => {
                                           onSpritePressEnd={handlePressEnd}
                                           longPressCompletedRef={longPressCompleted}
                                           onStageResize={setCellSize}
+                                          activeSpriteId={activeSpriteId}
+                                          onSelectSprite={setActiveSpriteId}
                                         />
                                         {editingTextSprite && (
                                           <TextEditor 

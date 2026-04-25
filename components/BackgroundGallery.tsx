@@ -1,4 +1,4 @@
- import React from 'react';
+import React from 'react';
 
 const BACKGROUND_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Arctic.svg',

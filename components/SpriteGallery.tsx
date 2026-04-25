@@ -196,7 +196,7 @@ const SpriteGallery: React.FC<SpriteGalleryProps> = ({ onClose, onSelect, onPain
                   src={sprite.url} 
                   alt="" 
                   loading="lazy"
-                  className="max-w-full max-h-full object-contain" 
+                  className="max-w-full max-h-full object-contain bg-white" 
                 />
               </div>
             ))}

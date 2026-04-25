@@ -1,4 +1,4 @@
- import React, { useRef, useMemo, useState, useLayoutEffect, useEffect } from 'react';
+import React, { useRef, useMemo, useState, useLayoutEffect, useEffect } from 'react';
 import { Sprite, SpriteState } from '../types';
 
 // Grid constants
@@ -21,6 +21,8 @@ interface StageProps {
   onSpritePressEnd: () => void;
   longPressCompletedRef: React.RefObject<boolean>;
   onStageResize?: (cellSize: number) => void;
+  activeSpriteId?: string | null;
+  onSelectSprite?: (spriteId: string) => void;
 }
 
 // --- Helper Components ---
@@ -107,7 +109,7 @@ const SpriteCharacter: React.FC<{
         bottom: `${pixelCenterY - imageSize / 2}px`,
         width: sprite.type === 'text' ? 'max-content' : `${imageSize}px`,
         height: sprite.type === 'text' ? 'auto' : `${imageSize}px`,
-        zIndex: isDragging ? 100 : (sprite.type === 'text' ? 20 : 10),
+        zIndex: isDragging ? 200 : (sprite.type === 'text' ? 20 : 10),
     };
     
     // During a drag, apply a smooth pixel-based transform for fluid movement
@@ -125,6 +127,9 @@ const SpriteCharacter: React.FC<{
             onMouseDown={(e) => {
                 onPressStart();
                 onMouseDown(e);
+            }}
+            onTouchStart={(e) => {
+                onPressStart();
             }}
             title={`${sprite.name} (x: ${state.x.toFixed(1)}, y: ${state.y.toFixed(1)})`}
         >
@@ -207,9 +212,11 @@ const SpriteCharacter: React.FC<{
 const Stage: React.FC<StageProps> = ({ 
     sprites, runtimeStates, onClick, showGrid = true, onSpriteDrag, onSpriteDragEnd, onSpriteDoubleClick,
     spriteToDeleteId, onDeleteSprite, onSetSpriteToDelete, onSpritePressStart, onSpritePressEnd, longPressCompletedRef,
-    onStageResize 
+    onStageResize, activeSpriteId, onSelectSprite 
 }) => {
   const stageContentRef = useRef<HTMLDivElement>(null);
+  const activeSpriteIdRef = useRef(activeSpriteId);
+  useEffect(() => { activeSpriteIdRef.current = activeSpriteId; }, [activeSpriteId]);
   const dragInfo = useRef<{
     id: string;
     startClientX: number;
@@ -220,6 +227,7 @@ const Stage: React.FC<StageProps> = ({
   } | null>(null);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0, cellSize: 0 });
   const [dragDelta, setDragDelta] = useState<{ x: number; y: number } | null>(null);
+  const [topSpriteId, setTopSpriteId] = useState<string | null>(null);
   const [isFinishingDrag, setIsFinishingDrag] = useState(false);
 
   useLayoutEffect(() => {
@@ -266,6 +274,9 @@ const Stage: React.FC<StageProps> = ({
     const sprite = sprites.find(s => s.id === spriteId);
     if (!spriteState || !sprite) return;
     
+    // Select the sprite when clicked/dragged on the stage
+    if (onSelectSprite) onSelectSprite(spriteId);
+    
     e.preventDefault();
     e.stopPropagation();
 
@@ -287,19 +298,22 @@ const Stage: React.FC<StageProps> = ({
 
   const handleMouseMove = (e: MouseEvent) => {
     if (!dragInfo.current || stageSize.cellSize <= 0) return;
-    e.preventDefault();
-
+    
     const dx = e.clientX - dragInfo.current.startClientX;
     const dy = e.clientY - dragInfo.current.startClientY;
 
     if (!dragInfo.current.didMove && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
         dragInfo.current.didMove = true;
-        onSpritePressEnd();
+        if (!longPressCompletedRef.current) {
+            onSpritePressEnd();
+        }
     }
     
-    if (dragInfo.current.didMove) {
-      setDragDelta({ x: dx, y: dy });
-    }
+    if (dragInfo.current.id !== activeSpriteIdRef.current) return;
+    if (!dragInfo.current.didMove) return;
+    e.preventDefault();
+
+    setDragDelta({ x: dx, y: dy });
   };
 
   const handleMouseUp = (e: MouseEvent) => {
@@ -327,6 +341,8 @@ const Stage: React.FC<StageProps> = ({
             onSpriteDrag(localDragInfo.id, finalGridPos);
             onSpriteDragEnd(localDragInfo.id, finalGridPos);
             
+            setTopSpriteId(localDragInfo.id);
+            // Bring to top by reordering renderableSprites or just by the Z-Index
             setIsFinishingDrag(true);
         } else {
             if (longPressCompletedRef.current) {
@@ -355,8 +371,13 @@ const Stage: React.FC<StageProps> = ({
           state: runtimeState, // Render using the true, unwrapped state
         };
       })
-      .filter((s): s is { key: string; sprite: Sprite; state: SpriteState } => s !== null);
-  }, [sprites, runtimeStates]);
+      .filter((s): s is { key: string; sprite: Sprite; state: SpriteState } => s !== null)
+      .sort((a, b) => {
+        if (a.sprite.id === topSpriteId) return 1;
+        if (b.sprite.id === topSpriteId) return -1;
+        return 0;
+      });
+  }, [sprites, runtimeStates, topSpriteId]);
 
 
   return (

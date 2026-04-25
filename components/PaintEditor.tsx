@@ -648,14 +648,15 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
         }
     } else if (isDragging && activeTool === 'select' && selectedShapeId && dragStartRef.current) {
         const pos = getMousePosition(e);
-        const dx = pos.x - dragStartRef.current.startX;
-        const dy = pos.y - dragStartRef.current.startY;
+        const currentDragStart = dragStartRef.current;
+        const dx = pos.x - currentDragStart.startX;
+        const dy = pos.y - currentDragStart.startY;
 
         setShapes(prevShapes => prevShapes.map(s => {
             if (s.id !== selectedShapeId) return s;
 
             const newShape = { ...s };
-            const { shapeStart } = dragStartRef.current!;
+            const { shapeStart } = currentDragStart;
 
             if (newShape.type === 'rect') {
                 newShape.x = shapeStart.x + dx;
@@ -1090,7 +1091,6 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
                 <svg ref={svgRef} width="100%" height="100%">
                     {shapes.map(shape => {
                       const commonProps = {
-                        key: shape.id,
                         onMouseDown: (e: React.MouseEvent) => handleShapeMouseDown(e, shape.id),
                         style: { cursor: activeTool === 'select' ? (isDragging && selectedShapeId === shape.id ? 'grabbing' : 'grab') : 'crosshair' },
                         fill: shape.fill,
@@ -1101,16 +1101,16 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
                       const elementRef = (el: SVGElement | null) => { shapeRefs.current[shape.id] = el; };
 
                       if (shape.type === 'rect') {
-                          return <rect ref={elementRef} {...commonProps} x={shape.x} y={shape.y} width={shape.width} height={shape.height} />;
+                          return <rect key={shape.id} ref={elementRef} {...commonProps} x={shape.x} y={shape.y} width={shape.width} height={shape.height} />;
                       }
                       if (shape.type === 'circle') {
-                          return <ellipse ref={elementRef} {...commonProps} cx={shape.cx} cy={shape.cy} rx={shape.rx} ry={shape.ry} />;
+                          return <ellipse key={shape.id} ref={elementRef} {...commonProps} cx={shape.cx} cy={shape.cy} rx={shape.rx} ry={shape.ry} />;
                       }
                       if (shape.type === 'line') {
-                          return <line ref={elementRef} {...commonProps} x1={shape.x1} y1={shape.y1} x2={shape.x2} y2={shape.y2} strokeLinecap="round"/>;
+                          return <line key={shape.id} ref={elementRef} {...commonProps} x1={shape.x1} y1={shape.y1} x2={shape.x2} y2={shape.y2} strokeLinecap="round"/>;
                       }
                       if (shape.type === 'path') {
-                          return <path ref={elementRef} {...commonProps} d={shape.d} transform={shape.transform} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>;
+                          return <path key={shape.id} ref={elementRef} {...commonProps} d={shape.d} transform={shape.transform} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>;
                       }
                       return null;
                     })}

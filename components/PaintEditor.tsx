@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+ import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Sprite } from '../types';
 
 // --- Type Definitions ---
@@ -232,15 +232,20 @@ const ShapeGallery: React.FC<ShapeGalleryProps> = ({ onClose, onSelect }) => {
 // --- SVG Parsing Logic ---
 const parseTransform = (transformString: string | null): { tx: number; ty: number } => {
     if (!transformString) return { tx: 0, ty: 0 };
-    const translateMatch = transformString.match(/translate\(\s*([0-9-.]+)\s*,?\s*([0-9-.]+)?\s*\)/);
-    if (translateMatch) {
-        return {
-            tx: parseFloat(translateMatch[1] || '0'),
-            ty: parseFloat(translateMatch[2] || '0'),
-        };
+    let totalTx = 0;
+    let totalTy = 0;
+    
+    // Support translate(x, y), translate(x y), and translate(x)
+    const translateRegex = /translate\s*\(\s*([0-9-.]+)\s*[, ]*\s*([0-9-.]+)?\s*\)/g;
+    let match;
+    while ((match = translateRegex.exec(transformString)) !== null) {
+        const x = parseFloat(match[1] || '0');
+        const yPart = match[2] ? match[2].trim() : '';
+        const y = yPart ? parseFloat(yPart) : 0;
+        if (!isNaN(x)) totalTx += x;
+        if (!isNaN(y)) totalTy += y;
     }
-    // Ignoring matrix, scale, rotate for simplicity
-    return { tx: 0, ty: 0 };
+    return { tx: totalTx, ty: totalTy };
 };
 
 const parseSvgString = (svgText: string): Shape[] => {
@@ -248,20 +253,20 @@ const parseSvgString = (svgText: string): Shape[] => {
     const doc = parser.parseFromString(svgText, "image/svg+xml");
     const svgNode = doc.documentElement;
     if (!svgNode || svgNode.tagName.toLowerCase() !== 'svg') {
-        const errorMsg = "Invalid SVG string provided: No root <svg> element found.";
-        console.error(errorMsg);
-        alert(errorMsg);
         return [];
     }
     
-    // Check for parsererror
-    const parserErrors = doc.getElementsByTagName("parsererror");
-    if (parserErrors.length > 0) {
-        const errorMsg = "XML Parsing error: " + parserErrors[0].textContent;
-        console.error(errorMsg);
-        alert(errorMsg);
-        return [];
+    // Check for viewBox to adjust initial translation
+    const viewBoxAttr = svgNode.getAttribute('viewBox');
+    let vbX = 0, vbY = 0;
+    if (viewBoxAttr) {
+        const parts = viewBoxAttr.split(/[\s,]+/).map(parseFloat);
+        if (parts.length === 4 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+            vbX = parts[0];
+            vbY = parts[1];
+        }
     }
+
     const finalShapes: Shape[] = [];
 
     const traverse = (node: Element, parentTransform: { tx: number; ty: number }) => {
@@ -272,10 +277,41 @@ const parseSvgString = (svgText: string): Shape[] => {
         };
 
         for (const child of Array.from(node.children)) {
+            // Ignore the background rect we create in handleSave
+            if (child.tagName.toLowerCase() === 'rect' && child.id === 'canvas-background') {
+                continue;
+            }
+
             const id = `s-${Date.now()}-${Math.random()}`;
-            const fill = child.getAttribute('fill') || 'none';
-            const stroke = child.getAttribute('stroke') || 'none';
-            const strokeWidth = parseFloat(child.getAttribute('stroke-width') || '0');
+            const el = child as any;
+            const fill = child.getAttribute('fill') || el.style?.fill || 'none';
+            const stroke = child.getAttribute('stroke') || el.style?.stroke || 'none';
+            const sWidth = child.getAttribute('stroke-width') || el.style?.strokeWidth || '0';
+            const strokeWidth = parseFloat(sWidth);
+            const ownTransform = child.getAttribute('transform') || '';
+            const ownT = parseTransform(ownTransform);
+            
+            // Apply SVG viewBox offset as a baseline translation for all root-level elements
+            let baseTx = currentTransform.tx;
+            let baseTy = currentTransform.ty;
+            
+            // If this is a direct child of the SVG root and we have a non-zero viewBox offset,
+            // we should account for it if the coordinates are in the viewBox coordinate system.
+            // However, our code already saves shapes with absolute coordinates relative to their own transform.
+            // The safest is to let the centering effect handle the alignment, 
+            // but we MUST parse the transforms accurately.
+
+            const finalTx = baseTx + ownT.tx;
+            const finalTy = baseTy + ownT.ty;
+            const otherTransforms = ownTransform.replace(/translate\s*\([^)]*\)/g, '').trim();
+            
+            let combinedTransform = '';
+            if (finalTx !== 0 || finalTy !== 0) {
+                combinedTransform = `translate(${finalTx.toFixed(2)}, ${finalTy.toFixed(2)})`;
+            }
+            if (otherTransforms) {
+                combinedTransform = (combinedTransform + ' ' + otherTransforms).trim();
+            }
 
             let shape: Shape | null = null;
             
@@ -283,39 +319,42 @@ const parseSvgString = (svgText: string): Shape[] => {
                 case 'rect':
                     shape = {
                         id, type: 'rect',
-                        x: parseFloat(child.getAttribute('x') || '0') + currentTransform.tx,
-                        y: parseFloat(child.getAttribute('y') || '0') + currentTransform.ty,
+                        x: parseFloat(child.getAttribute('x') || '0'),
+                        y: parseFloat(child.getAttribute('y') || '0'),
                         width: parseFloat(child.getAttribute('width') || '0'),
                         height: parseFloat(child.getAttribute('height') || '0'),
-                        fill, stroke, strokeWidth
+                        fill, stroke, strokeWidth,
+                        transform: combinedTransform || undefined
                     };
                     break;
                 case 'circle':
                 case 'ellipse':
                     shape = {
                         id, type: 'circle',
-                        cx: parseFloat(child.getAttribute('cx') || '0') + currentTransform.tx,
-                        cy: parseFloat(child.getAttribute('cy') || '0') + currentTransform.ty,
+                        cx: parseFloat(child.getAttribute('cx') || '0'),
+                        cy: parseFloat(child.getAttribute('cy') || '0'),
                         rx: parseFloat(child.getAttribute('r') || child.getAttribute('rx') || '0'),
                         ry: parseFloat(child.getAttribute('r') || child.getAttribute('ry') || '0'),
-                        fill, stroke, strokeWidth
+                        fill, stroke, strokeWidth,
+                        transform: combinedTransform || undefined
                     };
                     break;
                 case 'line':
                      shape = {
                         id, type: 'line',
-                        x1: parseFloat(child.getAttribute('x1') || '0') + currentTransform.tx,
-                        y1: parseFloat(child.getAttribute('y1') || '0') + currentTransform.ty,
-                        x2: parseFloat(child.getAttribute('x2') || '0') + currentTransform.tx,
-                        y2: parseFloat(child.getAttribute('y2') || '0') + currentTransform.ty,
-                        fill: 'none', stroke, strokeWidth
+                        x1: parseFloat(child.getAttribute('x1') || '0'),
+                        y1: parseFloat(child.getAttribute('y1') || '0'),
+                        x2: parseFloat(child.getAttribute('x2') || '0'),
+                        y2: parseFloat(child.getAttribute('y2') || '0'),
+                        fill: 'none', stroke, strokeWidth,
+                        transform: combinedTransform || undefined
                     };
                     break;
                 case 'path':
                     shape = {
                         id, type: 'path',
                         d: child.getAttribute('d') || '',
-                        transform: `translate(${currentTransform.tx}, ${currentTransform.ty})`,
+                        transform: combinedTransform || undefined,
                         fill, stroke, strokeWidth
                     };
                     break;
@@ -444,137 +483,14 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     loadSprite();
   }, [initialSprite]);
 
-  useLayoutEffect(() => {
-    if (isInitialLoadRef.current && shapes.length > 0 && svgRef.current) {
-        
-        let totalBBox = { x: Infinity, y: Infinity, x2: -Infinity, y2: -Infinity };
-        let hasContent = false;
-
-        shapes.forEach(shape => {
-            const b = getBoundingBox(shape);
-            if (b.width > 0 || b.height > 0) {
-                hasContent = true;
-                const strokeOffset = (shape.strokeWidth || 0) / 2;
-                totalBBox.x = Math.min(totalBBox.x, b.x - strokeOffset);
-                totalBBox.y = Math.min(totalBBox.y, b.y - strokeOffset);
-                totalBBox.x2 = Math.max(totalBBox.x2, b.x + b.width + strokeOffset);
-                totalBBox.y2 = Math.max(totalBBox.y2, b.y + b.height + strokeOffset);
-            }
-        });
-
-        if (hasContent) {
-            const bboxWidth = totalBBox.x2 - totalBBox.x;
-            const bboxHeight = totalBBox.y2 - totalBBox.y;
-            const bboxCenterX = totalBBox.x + bboxWidth / 2;
-            const bboxCenterY = totalBBox.y + bboxHeight / 2;
-
-            const canvasWidth = 480;
-            const canvasHeight = 420;
-            const canvasCenterX = canvasWidth / 2;
-            const canvasCenterY = canvasHeight / 2;
-
-            // Target dimensions (80% of canvas roughly, or with padding)
-            const padding = 40; 
-            const availableWidth = canvasWidth - padding * 2;
-            const availableHeight = canvasHeight - padding * 2;
-
-            // Calculate scale to fit
-            let scale = 1;
-            if (bboxWidth > 0 && bboxHeight > 0) {
-                 const scaleX = availableWidth / bboxWidth;
-                 const scaleY = availableHeight / bboxHeight;
-                 scale = Math.min(scaleX, scaleY);
-            }
-            
-            // Sanity check for scale
-            if (!isFinite(scale) || scale <= 0) scale = 1;
-
-            // Check if transformation is needed (threshold to avoid jitter on already centered images)
-            // But since we are enforcing scale, we almost always update unless scale is 1 and centered.
-            const dx = canvasCenterX - bboxCenterX;
-            const dy = canvasCenterY - bboxCenterY;
-            
-            // We apply if there is significant movement OR scaling needed.
-            // Check diff against scale 1.0 with epsilon
-            const isScaleDifferent = Math.abs(scale - 1) > 0.01;
-            const isPosDifferent = Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1;
-
-            if (isScaleDifferent || isPosDifferent) {
-                setShapes(prevShapes => prevShapes.map(s => {
-                    const newShape = { ...s };
-                    
-                    // Scale stroke width to maintain ratio
-                    newShape.strokeWidth = (newShape.strokeWidth || 0) * scale;
-
-                    switch (newShape.type) {
-                        case 'rect':
-                            newShape.width *= scale;
-                            newShape.height *= scale;
-                            newShape.x = canvasCenterX + (newShape.x - bboxCenterX) * scale;
-                            newShape.y = canvasCenterY + (newShape.y - bboxCenterY) * scale;
-                            break;
-                        case 'circle':
-                            newShape.rx *= scale;
-                            newShape.ry *= scale;
-                            newShape.cx = canvasCenterX + (newShape.cx - bboxCenterX) * scale;
-                            newShape.cy = canvasCenterY + (newShape.cy - bboxCenterY) * scale;
-                            break;
-                        case 'line':
-                            newShape.x1 = canvasCenterX + (newShape.x1 - bboxCenterX) * scale;
-                            newShape.y1 = canvasCenterY + (newShape.y1 - bboxCenterY) * scale;
-                            newShape.x2 = canvasCenterX + (newShape.x2 - bboxCenterX) * scale;
-                            newShape.y2 = canvasCenterY + (newShape.y2 - bboxCenterY) * scale;
-                            break;
-                        case 'path': {
-                            const transform = newShape.transform || '';
-                            const translateRegex = /translate\(\s*([0-9-.]+)\s*,?\s*([0-9-.]+)?\s*\)/;
-                            const scaleRegex = /scale\(([^)]+)\)/;
-                            
-                            let tx = 0, ty = 0;
-                            const tMatch = transform.match(translateRegex);
-                            if (tMatch) {
-                                tx = parseFloat(tMatch[1]);
-                                ty = parseFloat(tMatch[2] || '0');
-                            }
-                            
-                            let currentS = 1;
-                            const sMatch = transform.match(scaleRegex);
-                            if (sMatch) {
-                                currentS = parseFloat(sMatch[1]);
-                            }
-
-                            const newTx = canvasCenterX + (tx - bboxCenterX) * scale;
-                            const newTy = canvasCenterY + (ty - bboxCenterY) * scale;
-                            const newScale = currentS * scale;
-
-                            let newTransform = transform;
-                            
-                            // Replace or Append Translate
-                            if (tMatch) {
-                                newTransform = newTransform.replace(translateRegex, `translate(${newTx}, ${newTy})`);
-                            } else {
-                                newTransform = `translate(${newTx}, ${newTy}) ${newTransform}`;
-                            }
-                            
-                            // Replace or Append Scale
-                            if (sMatch) {
-                                newTransform = newTransform.replace(scaleRegex, `scale(${newScale})`);
-                            } else {
-                                newTransform = `${newTransform} scale(${newScale})`;
-                            }
-                            
-                            newShape.transform = newTransform.replace(/\s+/g, ' ').trim();
-                            break;
-                        }
-                    }
-                    return newShape;
-                }));
-            }
-        }
-        
+  useEffect(() => {
+    // Preserve the exact positions and sizes that the user saved.
+    // If users want to center their drawings, they can do so manually.
+    if (isInitialLoadRef.current && shapes.length > 0) {
         isInitialLoadRef.current = false;
     }
-  }, [shapes, initialSprite]);
+  }, [shapes]);
+
 
   const getMousePosition = (e: React.MouseEvent): {x: number, y: number} => {
     if (!svgRef.current) return {x: 0, y: 0};
@@ -782,16 +698,21 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
 
     // Generate SVG string directly from shapes to ensure color accuracy
     const elements = shapes.map(shape => {
-        const style = `fill: ${shape.fill}; stroke: ${shape.stroke}; stroke-width: ${shape.strokeWidth};`;
+        const fillAttr = shape.fill ? `fill="${shape.fill}"` : '';
+        const strokeAttr = shape.stroke ? `stroke="${shape.stroke}"` : '';
+        const strokeWidthAttr = shape.strokeWidth ? `stroke-width="${shape.strokeWidth}"` : '';
+        
+        const attrs = `${fillAttr} ${strokeAttr} ${strokeWidthAttr}`.trim();
+        
         switch (shape.type) {
             case 'rect':
-                return `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" style="${style}" ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
+                return `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" ${attrs} ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
             case 'circle':
-                return `<ellipse cx="${shape.cx}" cy="${shape.cy}" rx="${shape.rx}" ry="${shape.ry}" style="${style}" ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
+                return `<ellipse cx="${shape.cx}" cy="${shape.cy}" rx="${shape.rx}" ry="${shape.ry}" ${attrs} ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
             case 'line':
-                return `<line x1="${shape.x1}" y1="${shape.y1}" x2="${shape.x2}" y2="${shape.y2}" style="${style}" stroke-linecap="round" ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
+                return `<line x1="${shape.x1}" y1="${shape.y1}" x2="${shape.x2}" y2="${shape.y2}" ${attrs} stroke-linecap="round" ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
             case 'path':
-                return `<path d="${shape.d}" transform="${shape.transform || ''}" style="${style}" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />`;
+                return `<path d="${shape.d}" transform="${shape.transform || ''}" ${attrs} stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />`;
             default:
                 return '';
         }
@@ -799,7 +720,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
 
     const svgString = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">
-    <rect x="${finalViewBoxParts.x}" y="${finalViewBoxParts.y}" width="${finalViewBoxParts.w}" height="${finalViewBoxParts.h}" fill="transparent" />
+    <rect id="canvas-background" x="${finalViewBoxParts.x}" y="${finalViewBoxParts.y}" width="${finalViewBoxParts.w}" height="${finalViewBoxParts.h}" fill="transparent" />
     ${elements}
 </svg>`;
 
@@ -823,24 +744,18 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     const newShape = JSON.parse(JSON.stringify(original));
     newShape.id = `s-${Date.now()}`;
     
-    if (newShape.type === 'rect') { newShape.x += 10; newShape.y += 10; }
-    else if (newShape.type === 'circle') { newShape.cx += 10; newShape.cy += 10; }
-    else if (newShape.type === 'line') { newShape.x1 += 10; newShape.x2 += 10; newShape.y1 += 10; newShape.y2 += 10; }
-    else if (newShape.type === 'path') {
-        // Simple translation for paths requires parsing and modifying transform
-        if (newShape.transform) {
-            const translateRegex = /translate\(([^,)]+),([^)]+)\)/;
-            const match = newShape.transform.match(translateRegex);
-            if (match) {
-                const x = parseFloat(match[1]) + 10;
-                const y = parseFloat(match[2]) + 10;
-                newShape.transform = newShape.transform.replace(translateRegex, `translate(${x}, ${y})`);
-            } else {
-                 newShape.transform = `translate(10, 10) ${newShape.transform}`;
-            }
-        } else {
-            newShape.transform = 'translate(10, 10)';
-        }
+    // Consistently use transform for duplication offset
+    const transform = newShape.transform || '';
+    const translateRegex = /translate\(([^, )]+)[, ]*([^)]*)\)/;
+    const match = transform.match(translateRegex);
+    
+    if (match) {
+        const x = (parseFloat(match[1]) || 0) + 10;
+        const yPart = match[2] ? match[2].trim() : '';
+        const y = (yPart ? parseFloat(yPart) : 0) + 10;
+        newShape.transform = transform.replace(translateRegex, `translate(${x}, ${y})`);
+    } else {
+         newShape.transform = `translate(10, 10) ${transform}`.trim();
     }
 
     setShapes(prev => [...prev, newShape]);
@@ -987,76 +902,54 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
         if (s.id !== selectedShapeId) return s;
 
         const newShape = { ...s };
+        const element = shapeRefs.current[newShape.id];
+        
+        // Use uniform scaling via transform for all shapes
+        // This avoids issues with mixing coordinate-based and transform-based geometry
+        if (element && element instanceof SVGGraphicsElement) {
+            const bbox = element.getBBox();
+            const cx = bbox.x + bbox.width / 2;
+            const cy = bbox.y + bbox.height / 2;
+            
+            const transform = newShape.transform || '';
+            const scaleRegex = /scale\(([^)]+)\)/;
+            const translateRegex = /translate\(([^, )]+)[, ]*([^)]*)\)/;
 
-        switch (newShape.type) {
-            case 'rect': {
-                const cx = newShape.x + newShape.width / 2;
-                const cy = newShape.y + newShape.height / 2;
+            let currentScale = 1;
+            const scaleMatch = transform.match(scaleRegex);
+            if (scaleMatch) currentScale = parseFloat(scaleMatch[1]);
+            
+            let tx = 0, ty = 0;
+            const translateMatch = transform.match(translateRegex);
+            if (translateMatch) {
+                tx = parseFloat(translateMatch[1]);
+                const tyPart = translateMatch[2] ? translateMatch[2].trim() : '';
+                ty = tyPart ? parseFloat(tyPart) : 0;
+            }
+
+            const newScale = currentScale * factor;
+            // Formula to scale around center: newT = currentT + center * (currentScale - newScale)
+            const newTx = tx + cx * currentScale - cx * newScale;
+            const newTy = ty + cy * currentScale - cy * newScale;
+
+            let newTransform = transform;
+            if (scaleMatch) newTransform = newTransform.replace(scaleRegex, `scale(${newScale.toFixed(4)})`);
+            else newTransform = `${newTransform} scale(${newScale.toFixed(4)})`.trim();
+            
+            if (translateMatch) newTransform = newTransform.replace(translateRegex, `translate(${newTx.toFixed(2)}, ${newTy.toFixed(2)})`);
+            else newTransform = `translate(${newTx.toFixed(2)}, ${newTy.toFixed(2)}) ${newTransform}`.trim();
+            
+            newShape.transform = newTransform;
+            // Optionally scale stroke width if it should relative to object size
+            // newShape.strokeWidth *= factor; 
+        } else {
+            // Very simple fallback if ref not available
+            if (newShape.type === 'rect') {
                 newShape.width *= factor;
                 newShape.height *= factor;
-                newShape.x = cx - newShape.width / 2;
-                newShape.y = cy - newShape.height / 2;
-                break;
-            }
-            case 'circle': {
+            } else if (newShape.type === 'circle') {
                 newShape.rx *= factor;
                 newShape.ry *= factor;
-                break;
-            }
-            case 'line': {
-                const cx = (newShape.x1 + newShape.x2) / 2;
-                const cy = (newShape.y1 + newShape.y2) / 2;
-                newShape.x1 = cx + (newShape.x1 - cx) * factor;
-                newShape.y1 = cy + (newShape.y1 - cy) * factor;
-                newShape.x2 = cx + (newShape.x2 - cx) * factor;
-                newShape.y2 = cy + (newShape.y2 - cy) * factor;
-                break;
-            }
-            case 'path': {
-                 const element = shapeRefs.current[newShape.id];
-                if (!element || !(element instanceof SVGGraphicsElement)) break;
-
-                const bbox = element.getBBox();
-                const cx = bbox.x + bbox.width / 2;
-                const cy = bbox.y + bbox.height / 2;
-                
-                const transform = newShape.transform || '';
-                const scaleRegex = /scale\(([^)]+)\)/;
-                const translateRegex = /translate\(([^,)]+),([^)]+)\)/;
-
-                let currentScale = 1;
-                const scaleMatch = transform.match(scaleRegex);
-                if (scaleMatch) currentScale = parseFloat(scaleMatch[1]);
-                
-                let tx = 0, ty = 0;
-                const translateMatch = transform.match(translateRegex);
-                if (translateMatch) {
-                    tx = parseFloat(translateMatch[1]);
-                    ty = parseFloat(translateMatch[2]);
-                }
-
-                const newScale = currentScale * factor;
-                // This formula adjusts translation to keep the shape centered during scaling
-                const newTx = tx + cx * currentScale - cx * newScale;
-                const newTy = ty + cy * currentScale - cy * newScale;
-
-                let newTransform = transform;
-                // Replace or add scale
-                if (scaleMatch) {
-                    newTransform = newTransform.replace(scaleRegex, `scale(${newScale})`);
-                } else {
-                    newTransform = `${newTransform} scale(${newScale})`.trim();
-                }
-                // Replace or add translate
-                if (translateMatch) {
-                    newTransform = newTransform.replace(translateRegex, `translate(${newTx}, ${newTy})`);
-                } else {
-                    // This case should be rare if shapes are always added with translation
-                    newTransform = `translate(${newTx}, ${newTy}) ${newTransform}`.trim();
-                }
-                
-                newShape.transform = newTransform;
-                break;
             }
         }
         return newShape;
@@ -1102,14 +995,48 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
         }
     }
     
-    // Fallback
+    // Fallback if ref or CTM is not ready
+    let baseBox = { x: 0, y: 0, width: 0, height: 0 };
     switch (shape.type) {
-        case 'rect': return { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
-        case 'circle': return { x: shape.cx - shape.rx, y: shape.cy - shape.ry, width: shape.rx * 2, height: shape.ry * 2 };
+        case 'rect': 
+            baseBox = { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
+            break;
+        case 'circle': 
+            baseBox = { x: shape.cx - shape.rx, y: shape.cy - shape.ry, width: shape.rx * 2, height: shape.ry * 2 };
+            break;
         case 'line':
-            return { x: Math.min(shape.x1, shape.x2), y: Math.min(shape.y1, shape.y2), width: Math.abs(shape.x1 - shape.x2), height: Math.abs(shape.y1 - shape.y2) };
-        case 'path': return { x: 0, y: 0, width: 0, height: 0 };
+            baseBox = { x: Math.min(shape.x1, shape.x2), y: Math.min(shape.y1, shape.y2), width: Math.abs(shape.x1 - shape.x2), height: Math.abs(shape.y1 - shape.y2) };
+            break;
+        case 'path': 
+            // Crude estimation from path data if ref not ready
+            const coords = shape.d.match(/-?[0-9.]+/g);
+            if (coords) {
+                const nums = coords.map(parseFloat);
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                for (let i = 0; i < nums.length; i += 2) {
+                    if (!isNaN(nums[i])) {
+                        minX = Math.min(minX, nums[i]);
+                        maxX = Math.max(maxX, nums[i]);
+                    }
+                    if (i + 1 < nums.length && !isNaN(nums[i+1])) {
+                        minY = Math.min(minY, nums[i+1]);
+                        maxY = Math.max(maxY, nums[i+1]);
+                    }
+                }
+                if (minX !== Infinity) {
+                    baseBox = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+                }
+            }
+            break;
     }
+
+    // Attempt to account for translation in the transform string for the fallback
+    if (shape.transform) {
+        const t = parseTransform(shape.transform);
+        baseBox.x += t.tx;
+        baseBox.y += t.ty;
+    }
+    return baseBox;
   };
 
   const selectedShape = shapes.find(s => s.id === selectedShapeId);

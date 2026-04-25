@@ -7,6 +7,7 @@ interface ShapeBase {
   fill: string;
   stroke: string;
   strokeWidth: number;
+  transform?: string;
 }
 
 interface RectShape extends ShapeBase {
@@ -36,7 +37,6 @@ interface LineShape extends ShapeBase {
 interface PathShape extends ShapeBase {
   type: 'path';
   d: string;
-  transform?: string;
 }
 
 type Shape = RectShape | CircleShape | LineShape | PathShape;
@@ -91,8 +91,17 @@ const SHAPES_DATA = [
     { name: 'Pizza', viewBox: '0 0 24 24', path: 'M12,2A10,10,0,1,0,22,12,10,10,0,0,0,12,2Zm6,10.5a.5.5,0,0,1-.5.5h-5a.5.5,0,0,1-.5-.5v-5a.5.5,0,0,1,.5-.5H12a.5.5,0,0,1,.35.15L18,11.29V12.5ZM9,7a1.5,1.5,0,1,1,1.5,1.5A1.5,1.5,0,0,1,9,7Zm4.5,3.5a1.5,1.5,0,1,1,1.5,1.5A1.5,1.5,0,0,1,13.5,10.5ZM9,14a1.5,1.5,0,1,1,1.5,1.5A1.5,1.5,0,0,1,9,14Z' },
     { name: 'Rocket', viewBox: '0 0 24 24', path: 'M18.7,5.3a2.37,2.37,0,0,0-3.2-.12L13,7.54V4.5a1.5,1.5,0,0,0-3,0v3L7.5,5.18a2.37,2.37,0,0,0-3.2.12,2.37,2.37,0,0,0,.12,3.2L7,11v6.5a1.5,1.5,0,0,0,3,0V11l2.56,2.56a2.37,2.37,0,0,0,3.32,0,2.37,2.37,0,0,0,0-3.32ZM7,20a1,1,0,0,0,1,1h8a1,1,0,0,0,0-2H8A1,1,0,0,0,7,20Z' },
     { name: 'Robot', viewBox: '0 0 24 24', path: 'M19,6H15V4a2,2,0,0,0-2-2H9A2,2,0,0,0,7,4V6H5A2,2,0,0,0,3,8V19a2,2,0,0,0,2,2H7v1a1,1,0,0,0,2,0V21h4v1a1,1,0,0,0,2,0V21h2a2,2,0,0,0,2-2V8A2,2,0,0,0,19,6ZM8.5,15A1.5,1.5,0,1,1,10,13.5,1.5,1.5,0,0,1,8.5,15Zm7,0A1.5,1.5,0,1,1,17,13.5,1.5,1.5,0,0,1,15.5,15ZM16,10H8V8h8Z' },
-    { name: 'Planet', viewBox: '0 0 24 24', path: 'M21.71,6.29a1,1,0,0,0-1.07-.33,8,8,0,0,1-8.58,8.58,1,1,0,0,0,.33,1.07,1,1,0,0,0,1.07.33A10,10,0,0,0,22,7.36,1,1,0,0,0,21.71,6.29ZM11,3a8,8,0,1,0,8,8,8,8,0,0,0-8-8Zm0,14a6,6,0,1,1,6-6,6,6,0,0,1-6-6Z' }
+    // Improved Anatomical/Body Part Shapes (Standardized Path Styles)
+    { name: 'Body', viewBox: '0 0 100 100', path: 'M 30,20 C 30,10 70,10 70,20 L 75,70 C 75,85 25,85 25,70 Z', defaultColor: '#F59E0B' },
+    { name: 'Arm', viewBox: '0 0 100 100', path: 'M 10,10 C 20,40 20,60 10,90 L 30,90 C 40,60 40,40 30,10 Z', defaultColor: '#D97706' },
+    { name: 'Leg', viewBox: '0 0 100 100', path: 'M 10,10 C 20,50 20,70 10,90 L 30,90 C 40,70 40,50 30,10 Z', defaultColor: '#D97706' },
+    { name: 'Eye', viewBox: '0 0 100 100', path: 'M 20,50 C 20,30 80,30 80,50 C 80,70 20,70 20,50 M 50,50 A 10,10 0 1,0 50,51 Z', defaultColor: '#FFFFFF' },
+    { name: 'Nose', viewBox: '0 0 100 100', path: 'M 50,20 C 45,60 55,60 50,80 Z', defaultColor: '#BE185D' },
+    { name: 'Mouth', viewBox: '0 0 100 100', path: 'M 30,60 C 40,75 60,75 70,60', defaultColor: '#EF4444' },
+    { name: 'Man Template', viewBox: '0 0 100 200', path: 'M 50,20 A 15,15 0 1,0 50,50 A 15,15 0 1,0 50,20 M 50,50 L 50,110 M 50,70 L 30,90 M 50,70 L 70,90 M 50,110 L 35,170 M 50,110 L 65,170', defaultColor: '#3B82F6' },
+    { name: 'Woman Template', viewBox: '0 0 100 200', path: 'M 50,20 A 15,15 0 1,0 50,50 A 15,15 0 1,0 50,20 M 50,50 L 50,110 M 30,80 L 70,80 M 50,110 L 35,170 M 50,110 L 65,170', defaultColor: '#EC4899' }
 ];
+
 
 // --- Helper Components ---
 
@@ -139,7 +148,12 @@ const ColorSwatch: React.FC<{ color: string, active?: boolean, onClick: () => vo
     className={`w-7 h-7 rounded-full transition-transform hover:scale-110
       ${active ? 'ring-2 ring-offset-2 ring-blue-500 ring-offset-white' : ''}
     `}
-    style={{ backgroundColor: color, border: color.toUpperCase() === '#FFFFFF' ? '1px solid #e2e8f0' : 'none' }}
+    style={{ 
+        backgroundColor: color, 
+        border: (color.toUpperCase() === '#FFFFFF' || color === 'transparent') ? '1px solid #e2e8f0' : 'none',
+        backgroundImage: color === 'transparent' ? 'repeating-conic-gradient(#e2e8f0 0% 25%, transparent 0% 50%, #e2e8f0 50% 75%, transparent 75%)' : 'none',
+        backgroundSize: '10px 10px'
+    }}
   />
 );
 
@@ -171,7 +185,7 @@ const ColorPickerTarget: React.FC<{
 };
 
 const COLORS = [
-  '#000000', '#FFFFFF', '#EF4444', '#F97316', '#F59E0B', '#EAB308', 
+  'transparent', '#000000', '#FFFFFF', '#EF4444', '#F97316', '#F59E0B', '#EAB308', 
   '#84CC16', '#22C55E', '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9',
   '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899'
 ];
@@ -179,7 +193,7 @@ const COLORS = [
 // --- Shape Gallery Component ---
 interface ShapeGalleryProps {
   onClose: () => void;
-  onSelect: (shape: { path: string; viewBox: string }) => void;
+  onSelect: (shape: { name: string; path: string; viewBox: string; defaultColor?: string }) => void;
 }
 const ShapeGallery: React.FC<ShapeGalleryProps> = ({ onClose, onSelect }) => {
     return (
@@ -234,10 +248,20 @@ const parseSvgString = (svgText: string): Shape[] => {
     const doc = parser.parseFromString(svgText, "image/svg+xml");
     const svgNode = doc.documentElement;
     if (!svgNode || svgNode.tagName.toLowerCase() !== 'svg') {
-        console.error("Invalid SVG string provided");
+        const errorMsg = "Invalid SVG string provided: No root <svg> element found.";
+        console.error(errorMsg);
+        alert(errorMsg);
         return [];
     }
     
+    // Check for parsererror
+    const parserErrors = doc.getElementsByTagName("parsererror");
+    if (parserErrors.length > 0) {
+        const errorMsg = "XML Parsing error: " + parserErrors[0].textContent;
+        console.error(errorMsg);
+        alert(errorMsg);
+        return [];
+    }
     const finalShapes: Shape[] = [];
 
     const traverse = (node: Element, parentTransform: { tx: number; ty: number }) => {
@@ -395,9 +419,18 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
                 const base64 = costume.replace('data:image/svg+xml;base64,', '');
                 svgString = decodeURIComponent(escape(atob(base64)));
             } else if (costume.endsWith('.svg')) {
-                const response = await fetch(costume);
-                if (!response.ok) throw new Error('Failed to fetch SVG');
-                svgString = await response.text();
+                try {
+                    console.log("Attempting to fetch costume:", costume);
+                    const response = await fetch(costume);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    svgString = await response.text();
+                    console.log("Successfully fetched SVG, length:", svgString.length);
+                    console.log("SVG Preview (first 500 chars):", svgString.substring(0, 500));
+                } catch (e) {
+                    console.error("Error loading SVG from URL:", costume, e);
+                    alert(`Failed to load costume: ${costume}. Check console for details.`);
+                    return;
+                }
             } else {
                 return;
             }
@@ -563,20 +596,25 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
           const pos = getMousePosition(e);
           setIsDragging(true);
           
-          let shapeStart: Record<string, number> = {};
+          let shapeStart: any = {};
           if (shape.type === 'rect') {
               shapeStart = { x: shape.x, y: shape.y };
           } else if (shape.type === 'circle') {
               shapeStart = { cx: shape.cx, cy: shape.cy };
           } else if (shape.type === 'line') {
               shapeStart = { x1: shape.x1, y1: shape.y1, x2: shape.x2, y2: shape.y2 };
-          } else if (shape.type === 'path') {
-              const transform = shape.transform || '';
-              const translateMatch = transform.match(/translate\(([^,)]+),([^)]+)\)/);
-              const tx = translateMatch ? parseFloat(translateMatch[1]) : 0;
-              const ty = translateMatch ? parseFloat(translateMatch[2]) : 0;
-              shapeStart = { tx, ty };
           }
+          
+          // Always capture translation if present
+          const transform = shape.transform || '';
+          const translateMatch = transform.match(/translate\(([^, )]+)[, ]*([^)]*)\)/);
+          const tx = translateMatch ? parseFloat(translateMatch[1]) : 0;
+          const tyPart = translateMatch && translateMatch[2] ? translateMatch[2].trim() : '';
+          const ty = tyPart ? parseFloat(tyPart) : 0;
+          
+          shapeStart.tx = isNaN(tx) ? 0 : tx;
+          shapeStart.ty = isNaN(ty) ? 0 : ty;
+          shapeStart.initialTransform = transform;
 
           dragStartRef.current = {
               startX: pos.x,
@@ -658,30 +696,24 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
             const newShape = { ...s };
             const { shapeStart } = currentDragStart;
 
-            if (newShape.type === 'rect') {
-                newShape.x = shapeStart.x + dx;
-                newShape.y = shapeStart.y + dy;
-            } else if (newShape.type === 'circle') {
-                newShape.cx = shapeStart.cx + dx;
-                newShape.cy = shapeStart.cy + dy;
-            } else if (newShape.type === 'line') {
-                newShape.x1 = shapeStart.x1 + dx;
-                newShape.y1 = shapeStart.y1 + dy;
-                newShape.x2 = shapeStart.x2 + dx;
-                newShape.y2 = shapeStart.y2 + dy;
-            } else if (newShape.type === 'path') {
-                const newTx = shapeStart.tx + dx;
-                const newTy = shapeStart.ty + dy;
-                
-                const oldTransform = newShape.transform || '';
-                const translateRegex = /translate\([^)]+\)/;
-                
-                if (translateRegex.test(oldTransform)) {
-                    newShape.transform = oldTransform.replace(translateRegex, `translate(${newTx}, ${newTy})`);
-                } else {
-                    newShape.transform = `translate(${newTx}, ${newTy}) ${oldTransform}`.trim();
-                }
-            }
+            // Simple robust dragging: Prepend translate(dx, dy) to the original transform
+            // This ensures it behaves exactly like a world-space shift.
+            const baseTransform = shapeStart.initialTransform || '';
+            
+            // We want newTx = initialTx + dx, newTy = initialTy + dy
+            // The cleanest way is to replace the old translate with the new one
+            // while keeping all other transforms untouched and relative.
+            
+            // Find existing translate relative to shapeStart.tx/ty
+            const newTx = shapeStart.tx + dx;
+            const newTy = shapeStart.ty + dy;
+            
+            let others = baseTransform.replace(/translate\([^)]*\)/g, '').trim();
+            newShape.transform = `translate(${newTx}, ${newTy}) ${others}`.trim();
+            
+            // For rect, circle, line: we keep their original base coords fixed during drag 
+            // and just use transform to move them.
+            // This avoids "swinging" pivot issues.
             return newShape;
         }));
     }
@@ -712,15 +744,12 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
   };
   
   const handleSave = () => {
-    if (!svgRef.current) return;
-
-    // Calculate the total bounding box of all shapes on the canvas
+    // Calculate the total bounding box
     let totalBBox = { x: Infinity, y: Infinity, x2: -Infinity, y2: -Infinity };
     let hasContent = false;
 
     shapes.forEach(shape => {
         const b = getBoundingBox(shape);
-        // Include stroke width in the calculation to prevent clipping
         const strokeOffset = (shape.strokeWidth || 0) / 2;
         if (b.width > 0 || b.height > 0) {
             hasContent = true;
@@ -737,8 +766,6 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     if (hasContent) {
         const finalWidth = totalBBox.x2 - totalBBox.x;
         const finalHeight = totalBBox.y2 - totalBBox.y;
-        
-        // Add a 10% padding to avoid shapes touching the edges
         const paddingX = finalWidth * 0.1;
         const paddingY = finalHeight * 0.1;
 
@@ -750,30 +777,32 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
         };
         viewBox = `${finalViewBoxParts.x} ${finalViewBoxParts.y} ${finalViewBoxParts.w} ${finalViewBoxParts.h}`;
     } else {
-        // Fallback for an empty canvas, use the full canvas size
         viewBox = `0 0 480 420`;
     }
 
-    const svgClone = svgRef.current.cloneNode(true) as SVGSVGElement;
-    
-    // Clean up editor-specific elements like the selection box
-    const selectionBox = svgClone.querySelector('#selection-box');
-    if (selectionBox) selectionBox.remove();
-    
-    // Set the calculated, tight viewBox on the clone
-    svgClone.setAttribute('viewBox', viewBox);
-    
-    // It's good practice to add a transparent rect that fills the viewBox
-    // to ensure the SVG dimensions are respected by all renderers.
-    const backgroundRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    backgroundRect.setAttribute('x', String(finalViewBoxParts.x));
-    backgroundRect.setAttribute('y', String(finalViewBoxParts.y));
-    backgroundRect.setAttribute('width', String(finalViewBoxParts.w));
-    backgroundRect.setAttribute('height', String(finalViewBoxParts.h));
-    backgroundRect.setAttribute('fill', 'transparent');
-    svgClone.prepend(backgroundRect);
+    // Generate SVG string directly from shapes to ensure color accuracy
+    const elements = shapes.map(shape => {
+        const style = `fill: ${shape.fill}; stroke: ${shape.stroke}; stroke-width: ${shape.strokeWidth};`;
+        switch (shape.type) {
+            case 'rect':
+                return `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" style="${style}" ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
+            case 'circle':
+                return `<ellipse cx="${shape.cx}" cy="${shape.cy}" rx="${shape.rx}" ry="${shape.ry}" style="${style}" ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
+            case 'line':
+                return `<line x1="${shape.x1}" y1="${shape.y1}" x2="${shape.x2}" y2="${shape.y2}" style="${style}" stroke-linecap="round" ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
+            case 'path':
+                return `<path d="${shape.d}" transform="${shape.transform || ''}" style="${style}" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />`;
+            default:
+                return '';
+        }
+    }).join('\n');
 
-    const svgString = new XMLSerializer().serializeToString(svgClone);
+    const svgString = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">
+    <rect x="${finalViewBoxParts.x}" y="${finalViewBoxParts.y}" width="${finalViewBoxParts.w}" height="${finalViewBoxParts.h}" fill="transparent" />
+    ${elements}
+</svg>`;
+
     const dataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
     onSave(dataUrl);
   };
@@ -881,7 +910,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
       setIsStrokePickerOpen(false);
   };
   
-  const handleSelectShape = (shapeData: { path: string; viewBox: string }) => {
+  const handleSelectShape = (shapeData: { name: string; path: string; viewBox: string; defaultColor?: string }) => {
     pushToHistory(shapes);
     const canvasWidth = 480;
     const canvasHeight = 420;
@@ -900,7 +929,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
         type: 'path',
         d: shapeData.path,
         transform: `translate(${translatedX}, ${translatedY}) scale(${scale})`,
-        fill: fillColor,
+        fill: shapeData.defaultColor || fillColor,
         stroke: strokeColor,
         strokeWidth: strokeWidth,
     };
@@ -912,6 +941,44 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
   const SCALE_FACTOR = 1.1;
   const handleGrow = () => handleScale(SCALE_FACTOR);
   const handleShrink = () => handleScale(1 / SCALE_FACTOR);
+
+  const handleFlipHorizontal = () => {
+    if (!selectedShapeId) return;
+    pushToHistory(shapes);
+    setShapes(prevShapes => prevShapes.map(s => {
+        if (s.id !== selectedShapeId) return s;                
+        const newShape = { ...s };
+        if (newShape.type === 'line') {
+            const bbox = getBoundingBox(newShape);
+            const cx = bbox.x + bbox.width / 2;
+            newShape.x1 = 2 * cx - newShape.x1;
+            newShape.x2 = 2 * cx - newShape.x2;
+        } else if (newShape.type === 'path') {
+             const bbox = getBoundingBox(newShape);
+             const cx = bbox.x + bbox.width / 2;
+             newShape.transform = `translate(${2 * cx}, 0) scale(-1, 1) ${newShape.transform || ''}`.trim();
+        }
+        return newShape;
+    }));
+  };
+
+  const handleRotate = () => {
+    if (!selectedShapeId) return;
+    pushToHistory(shapes);
+    setShapes(prevShapes => prevShapes.map(s => {
+        if (s.id !== selectedShapeId) return s;                
+        const newShape = { ...s };
+        const bbox = getBoundingBox(newShape);
+        const cx = bbox.x + bbox.width / 2;
+        const cy = bbox.y + bbox.height / 2;
+        
+        const transform = newShape.transform || '';
+        // Rotate 20 degrees cumulatively
+        newShape.transform = `rotate(20, ${cx}, ${cy}) ${transform}`.trim();
+
+        return newShape;
+    }));
+  };
 
   const handleScale = (factor: number) => {
     if (!selectedShapeId) return;
@@ -997,40 +1064,51 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
   };
 
   const getBoundingBox = (shape: Shape): {x: number; y: number; width: number; height: number} => {
+    const element = shapeRefs.current[shape.id];
+    const svg = svgRef.current;
+    
+    if (element && svg) {
+        // Use getBBox() which returns the bbox in the element's local coordinate system.
+        // Then multiply by the element's CTM (transformation matrix) to get world coordinates.
+        try {
+            const box = (element as SVGGraphicsElement).getBBox();
+            const matrix = (element as SVGGraphicsElement).getCTM();
+            
+            if (matrix) {
+                // Transform the four corners of the bbox
+                const points = [
+                    {x: box.x, y: box.y},
+                    {x: box.x + box.width, y: box.y},
+                    {x: box.x + box.width, y: box.y + box.height},
+                    {x: box.x, y: box.y + box.height}
+                ];
+                
+                const transformedPoints = points.map(p => {
+                    const pt = svg.createSVGPoint();
+                    pt.x = p.x;
+                    pt.y = p.y;
+                    return pt.matrixTransform(matrix);
+                });
+                
+                const minX = Math.min(...transformedPoints.map(p => p.x));
+                const minY = Math.min(...transformedPoints.map(p => p.y));
+                const maxX = Math.max(...transformedPoints.map(p => p.x));
+                const maxY = Math.max(...transformedPoints.map(p => p.y));
+                
+                return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+            }
+        } catch (e) {
+            console.error("Error calculating bounding box:", e);
+        }
+    }
+    
+    // Fallback
     switch (shape.type) {
         case 'rect': return { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
         case 'circle': return { x: shape.cx - shape.rx, y: shape.cy - shape.ry, width: shape.rx * 2, height: shape.ry * 2 };
         case 'line':
             return { x: Math.min(shape.x1, shape.x2), y: Math.min(shape.y1, shape.y2), width: Math.abs(shape.x1 - shape.x2), height: Math.abs(shape.y1 - shape.y2) };
-        case 'path': {
-            const element = shapeRefs.current[shape.id];
-            const svg = svgRef.current;
-            if (element && svg) {
-                // getBoundingClientRect gives the position relative to the viewport, including transforms.
-                const clientRect = element.getBoundingClientRect();
-
-                // We need to convert the viewport coordinates back to SVG coordinates.
-                const ctm = svg.getScreenCTM();
-                if (ctm) {
-                    const inverseCtm = ctm.inverse();
-                    
-                    // Top-left corner
-                    let pt = svg.createSVGPoint();
-                    pt.x = clientRect.left;
-                    pt.y = clientRect.top;
-                    const topLeft = pt.matrixTransform(inverseCtm);
-                    
-                    return {
-                        x: topLeft.x,
-                        y: topLeft.y,
-                        width: clientRect.width / ctm.a, // Adjust width by CTM scale
-                        height: clientRect.height / ctm.d, // Adjust height by CTM scale
-                    };
-                }
-            }
-            // Fallback if ref or CTM is not ready
-            return { x: 0, y: 0, width: 0, height: 0 };
-        }
+        case 'path': return { x: 0, y: 0, width: 0, height: 0 };
     }
   };
 
@@ -1068,6 +1146,9 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
                 <TopToolButton icon="fa-search-minus" title="Shrink" onClick={handleShrink} disabled={!selectedShapeId} iconColor="text-cyan-500" />
                 <TopToolButton icon="fa-trash" title="Delete" onClick={handleDelete} disabled={!selectedShapeId} iconColor="text-red-500" />
                 <Separator />
+                <TopToolButton icon="fa-arrows-alt-h" title="Flip Horizontal" onClick={handleFlipHorizontal} disabled={!selectedShapeId || selectedShape?.type === 'line'} iconColor="text-teal-500" />
+                <TopToolButton icon="fa-sync-alt" title="Rotate" onClick={handleRotate} disabled={!selectedShapeId || selectedShape?.type === 'line'} iconColor="text-teal-500" />
+                <Separator />
                 <TopToolButton icon="fa-arrow-up" title="Bring Forward" onClick={() => handleMoveLayer('forward')} disabled={!selectedShapeId} iconColor="text-orange-500" />
                 <TopToolButton icon="fa-arrow-down" title="Send Backward" onClick={() => handleMoveLayer('backward')} disabled={!selectedShapeId} iconColor="text-orange-500" />
             </div>
@@ -1101,13 +1182,13 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
                       const elementRef = (el: SVGElement | null) => { shapeRefs.current[shape.id] = el; };
 
                       if (shape.type === 'rect') {
-                          return <rect key={shape.id} ref={elementRef} {...commonProps} x={shape.x} y={shape.y} width={shape.width} height={shape.height} />;
+                          return <rect key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} x={shape.x} y={shape.y} width={shape.width} height={shape.height} />;
                       }
                       if (shape.type === 'circle') {
-                          return <ellipse key={shape.id} ref={elementRef} {...commonProps} cx={shape.cx} cy={shape.cy} rx={shape.rx} ry={shape.ry} />;
+                          return <ellipse key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} cx={shape.cx} cy={shape.cy} rx={shape.rx} ry={shape.ry} />;
                       }
                       if (shape.type === 'line') {
-                          return <line key={shape.id} ref={elementRef} {...commonProps} x1={shape.x1} y1={shape.y1} x2={shape.x2} y2={shape.y2} strokeLinecap="round"/>;
+                          return <line key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} x1={shape.x1} y1={shape.y1} x2={shape.x2} y2={shape.y2} strokeLinecap="round"/>;
                       }
                       if (shape.type === 'path') {
                           return <path key={shape.id} ref={elementRef} {...commonProps} d={shape.d} transform={shape.transform} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>;

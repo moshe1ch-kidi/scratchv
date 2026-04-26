@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+ import React, { useState } from 'react';
+
+import { Video } from 'lucide-react';
 
 interface CardData {
   id: string;
   title: string; // Used for modal title
-  icon: string;
+  icon: string | React.ReactNode;
   description: React.ReactNode;
   color: string;
 }
@@ -125,6 +127,23 @@ const BLOCKS_DESCRIPTION = (
     </div>
 );
 
+const YoutubeEmbed = ({ url }: { url: string }) => {
+  const videoId = url.split('v=')[1];
+  return (
+    <div className="aspect-video w-full rounded-xl overflow-hidden shadow-lg border border-slate-200">
+      <iframe
+        width="100%"
+        height="100%"
+        src={`https://www.youtube.com/embed/${videoId}`}
+        title="YouTube video player"
+        frameBorder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      ></iframe>
+    </div>
+  );
+};
+
 const CARDS: CardData[] = [
   // Card 1: Interface (Specific Content)
   { 
@@ -142,9 +161,33 @@ const CARDS: CardData[] = [
     description: BLOCKS_DESCRIPTION,
     color: '#F5A623' // Orange-ish for blocks
   },
+  // Card 3: Introducing STACKIDI
+  {
+    id: 'stackidi',
+    title: 'Introducing STACKIDI',
+    icon: <Video className="w-16 h-16 text-white" />,
+    description: <YoutubeEmbed url="https://www.youtube.com/watch?v=0bpgxclrEAI" />,
+    color: '#4B8CC2'
+  },
+  // Card 4: SPRITES
+  {
+    id: 'sprites-help',
+    title: 'SPRITES',
+    icon: <Video className="w-16 h-16 text-white" />,
+    description: <YoutubeEmbed url="https://www.youtube.com/watch?v=96dYRjJpL3M" />,
+    color: '#9013FE'
+  },
+  // Card 5: pages
+  {
+    id: 'pages-help',
+    title: 'pages',
+    icon: <Video className="w-16 h-16 text-white" />,
+    description: <YoutubeEmbed url="https://www.youtube.com/watch?v=uzfGiala1_k" />,
+    color: '#7ED321'
+  },
   // Generate remaining dummy cards to fill 4x7 grid (total 28)
-  // We have 2 real cards now, so we need 26 dummy cards.
-  ...Array.from({ length: 26 }, (_, i) => createDummyCard(i + 2))
+  // We have 5 real cards now, so we need 23 dummy cards.
+  ...Array.from({ length: 23 }, (_, i) => createDummyCard(i + 5))
 ];
 
 interface CodingCardsProps {
@@ -181,12 +224,19 @@ const CodingCards: React.FC<CodingCardsProps> = ({ onClose }) => {
                 onClick={() => setSelectedCard(card)}
                 className="bg-white rounded-xl shadow-sm hover:shadow-md border-2 border-transparent hover:border-blue-300 transition-all flex flex-col items-center justify-between group aspect-square overflow-hidden p-0"
               >
-                <div className="w-full flex-1 flex items-center justify-center p-4">
-                  <img 
-                    src={card.icon} 
-                    alt={card.title} 
-                    className="max-w-full max-h-full object-contain transition-transform group-hover:scale-105" 
-                  />
+                <div 
+                  className="w-full flex-1 flex items-center justify-center p-4 transition-transform group-hover:scale-105"
+                  style={typeof card.icon !== 'string' ? { backgroundColor: card.color } : {}}
+                >
+                  {typeof card.icon === 'string' ? (
+                    <img 
+                      src={card.icon} 
+                      alt={card.title} 
+                      className="max-w-full max-h-full object-contain" 
+                    />
+                  ) : (
+                    card.icon
+                  )}
                 </div>
                 <div className="w-full bg-[#4B8CC2] text-white text-center py-2 text-sm font-bold shrink-0">
                   {card.title}
@@ -209,14 +259,20 @@ const CodingCards: React.FC<CodingCardsProps> = ({ onClose }) => {
               
               <div className="p-6 overflow-y-auto flex-1">
                 <div className="flex flex-col items-center gap-6">
-                  {/* Large Image - Hide for blocks guide as requested */}
-                  {selectedCard.id !== 'blocks' && (
-                    <div className="w-full max-w-2xl bg-slate-50 rounded-xl border border-slate-200 p-2 shadow-inner">
-                      <img 
-                        src={selectedCard.icon} 
-                        alt={selectedCard.title} 
-                        className="w-full h-auto object-contain rounded-lg" 
-                      />
+                  {/* Large Image - Hide for blocks guide and video cards */}
+                  {!['blocks', 'stackidi', 'sprites-help', 'pages-help'].includes(selectedCard.id) && (
+                    <div className="w-full max-w-2xl bg-slate-50 rounded-xl border border-slate-200 p-2 shadow-inner flex justify-center items-center overflow-hidden min-h-[300px]">
+                      {typeof selectedCard.icon === 'string' ? (
+                        <img 
+                          src={selectedCard.icon} 
+                          alt={selectedCard.title} 
+                          className="w-full h-auto object-contain rounded-lg" 
+                        />
+                      ) : (
+                        <div className="p-12 rounded-full" style={{ backgroundColor: selectedCard.color }}>
+                          {React.cloneElement(selectedCard.icon as React.ReactElement, { className: 'w-32 h-32 text-white' })}
+                        </div>
+                      )}
                     </div>
                   )}
                   

@@ -663,6 +663,7 @@ const App: React.FC = () => {
             if (!sprite) return;
             const startState = runtimeSpriteStatesRef.current[spriteId];
             const targetState = sprite.initialState;
+            updateRuntimeSprite(spriteId, s => ({ ...s, visible: false }));
             await animateMovement(500, p => {
                 updateRuntimeSprite(spriteId, s => ({
                     ...s,
@@ -670,7 +671,7 @@ const App: React.FC = () => {
                     y: startState.y + (targetState.y - startState.y) * p,
                     rotation: startState.rotation + (targetState.rotation - startState.rotation) * p,
                     scale: startState.scale + (targetState.scale - startState.scale) * p,
-                    visible: targetState.visible,
+                    visible: false,
                 }));
             });
             // Final snap for Go Home
@@ -680,7 +681,7 @@ const App: React.FC = () => {
                 y: targetState.y,
                 rotation: targetState.rotation,
                 scale: targetState.scale,
-                visible: targetState.visible
+                visible: true
             }));
         },
         say: async (message: string) => {

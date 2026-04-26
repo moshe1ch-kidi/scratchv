@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useState, useLayoutEffect, useEffect } from 'react';
+ import React, { useRef, useMemo, useState, useLayoutEffect, useEffect } from 'react';
 import { Sprite, SpriteState } from '../types';
 
 // Grid constants
@@ -175,8 +175,9 @@ const SpriteCharacter: React.FC<{
                 className={`absolute inset-0 flex items-center justify-center ${sprite.type === 'text' ? 'p-2' : ''}`}
                 style={{
                     transform: `rotate(${state.rotation}deg) scale(${finalScaleX}, ${finalScaleY})`,
-                    opacity: state.visible ? 1 : 0.2,
-                    filter: state.visible ? 'none' : 'grayscale(100%) opacity(30%)',
+                    opacity: state.visible ? 1 : 0,
+                    visibility: state.visible ? 'visible' : 'hidden',
+                    filter: state.visible ? 'none' : 'none',
                 }}
             >
                 {sprite.type === 'text' && sprite.content ? (

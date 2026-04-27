@@ -121,7 +121,8 @@ const SPRITES = [
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anicar3.svg', category: 'vehicles' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anicock.svg', category: 'animals' },
   { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anibutter.svg', category: 'animals' },
-  { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anitiger.svg', category: 'animals' }
+  { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/anitiger.svg', category: 'animals' },
+  { url: 'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/sprite/bat.svg', category: 'animals' }
 ];
 
 interface SpriteGalleryProps {
@@ -132,10 +133,32 @@ interface SpriteGalleryProps {
 
 const SpriteGallery: React.FC<SpriteGalleryProps> = ({ onClose, onSelect, onPaintNew }) => {
   const [activeCategory, setActiveCategory] = useState<keyof typeof SPRITE_CATEGORIES>('all');
+  const [visibleCount, setVisibleCount] = useState(24);
 
   const filteredSprites = useMemo(() => {
-    if (activeCategory === 'all') return SPRITES;
-    return SPRITES.filter(s => s.category === activeCategory);
+    let result = SPRITES;
+    if (activeCategory !== 'all') {
+      result = SPRITES.filter(s => s.category === activeCategory);
+    }
+    return result;
+  }, [activeCategory]);
+
+  const visibleSprites = useMemo(() => {
+    return filteredSprites.slice(0, visibleCount);
+  }, [filteredSprites, visibleCount]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (target.scrollHeight - target.scrollTop <= target.clientHeight + 100) {
+      if (visibleCount < filteredSprites.length) {
+        setVisibleCount(prev => prev + 24);
+      }
+    }
+  };
+
+  // Reset visible count when category changes
+  React.useEffect(() => {
+    setVisibleCount(24);
   }, [activeCategory]);
 
   return (
@@ -172,7 +195,7 @@ const SpriteGallery: React.FC<SpriteGalleryProps> = ({ onClose, onSelect, onPain
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4" onScroll={handleScroll}>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-4">
             {/* Paint New Button - Only show in 'all' or 'items' maybe? Or always show */}
             {activeCategory === 'all' && (
@@ -186,9 +209,9 @@ const SpriteGallery: React.FC<SpriteGalleryProps> = ({ onClose, onSelect, onPain
             )}
 
             {/* Existing Sprites */}
-            {filteredSprites.map(sprite => (
+            {visibleSprites.map((sprite, idx) => (
               <div 
-                key={sprite.url} 
+                key={`${sprite.url}-${idx}`} 
                 onClick={() => onSelect(sprite.url)}
                 className="bg-white p-2 rounded-lg border border-slate-200 cursor-pointer aspect-square flex items-center justify-center transition-all hover:shadow-md hover:border-blue-400 hover:scale-105"
               >
@@ -201,6 +224,17 @@ const SpriteGallery: React.FC<SpriteGalleryProps> = ({ onClose, onSelect, onPain
               </div>
             ))}
           </div>
+          
+          {visibleCount < filteredSprites.length && (
+            <div className="flex justify-center mt-6">
+              <button 
+                onClick={() => setVisibleCount(prev => prev + 24)}
+                className="bg-blue-500 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-600 transition-colors"
+              >
+                Load More...
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

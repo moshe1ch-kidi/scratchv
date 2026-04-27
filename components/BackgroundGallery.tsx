@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 
 const BACKGROUND_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Arctic.svg',
@@ -39,7 +39,8 @@ const BACKGROUND_URLS = [
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/redroof.svg',
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/tress.svg',
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/greenfiled.svg',
-  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/city2.svg'
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/city2.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/greenforrest.svg'
 ];
 
 interface BackgroundGalleryProps {
@@ -48,6 +49,21 @@ interface BackgroundGalleryProps {
 }
 
 const BackgroundGallery: React.FC<BackgroundGalleryProps> = ({ onClose, onSelect }) => {
+  const [visibleCount, setVisibleCount] = useState(15);
+
+  const visibleBackgrounds = useMemo(() => {
+    return BACKGROUND_URLS.slice(0, visibleCount);
+  }, [visibleCount]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (target.scrollHeight - target.scrollTop <= target.clientHeight + 100) {
+      if (visibleCount < BACKGROUND_URLS.length) {
+        setVisibleCount(prev => prev + 15);
+      }
+    }
+  };
+
   return (
     <div 
       className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
@@ -63,18 +79,29 @@ const BackgroundGallery: React.FC<BackgroundGalleryProps> = ({ onClose, onSelect
             <i className="fas fa-times-circle"></i>
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4" onScroll={handleScroll}>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {BACKGROUND_URLS.map(url => (
+            {visibleBackgrounds.map((url, idx) => (
               <div 
-                key={url} 
+                key={`${url}-${idx}`} 
                 onClick={() => onSelect(url)}
                 className="bg-white p-2 rounded-lg border border-slate-200 cursor-pointer aspect-video flex items-center justify-center transition-all hover:shadow-md hover:border-blue-400 hover:scale-105 overflow-hidden"
               >
-                <img src={url} alt="" className="w-full h-full object-cover" />
+                <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
               </div>
             ))}
           </div>
+
+          {visibleCount < BACKGROUND_URLS.length && (
+            <div className="flex justify-center mt-6">
+              <button 
+                onClick={() => setVisibleCount(prev => prev + 15)}
+                className="bg-blue-500 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-600 transition-colors"
+              >
+                Load More...
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

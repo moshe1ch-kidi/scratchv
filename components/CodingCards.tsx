@@ -1,4 +1,4 @@
- import React, { useState } from 'react';
+import React, { useState } from 'react';
 
 import { Video } from 'lucide-react';
 
@@ -209,9 +209,17 @@ const CARDS: CardData[] = [
     description: <YoutubeEmbed url="https://www.youtube.com/watch?v=4KugwjWkh4s" />,
     color: '#4A90E2'
   },
+  // Card 9: The Stealth Sailboat
+  {
+    id: 'stealth-sailboat',
+    title: 'The Stealth Sailboat',
+    icon: <Video className="w-16 h-16 text-white" />,
+    description: <YoutubeEmbed url="https://www.youtube.com/watch?v=ExAqPpGjf4k" />,
+    color: '#F5A623'
+  },
   // Generate remaining dummy cards to fill 4x7 grid (total 28)
-  // We have 8 real cards now, so we need 20 dummy cards.
-  ...Array.from({ length: 20 }, (_, i) => createDummyCard(i + 8))
+  // We have 9 real cards now, so we need 19 dummy cards.
+  ...Array.from({ length: 19 }, (_, i) => createDummyCard(i + 9))
 ];
 
 interface CodingCardsProps {
@@ -284,7 +292,7 @@ const CodingCards: React.FC<CodingCardsProps> = ({ onClose }) => {
               <div className="p-6 overflow-y-auto flex-1">
                 <div className="flex flex-col items-center gap-6">
                   {/* Large Image - Hide for blocks guide and video cards */}
-                  {!['blocks', 'stackidi', 'sprites-help', 'pages-help', 'first-code', 'acrobatic', 'increase-sprite'].includes(selectedCard.id) && (
+                  {!['blocks', 'stackidi', 'sprites-help', 'pages-help', 'first-code', 'acrobatic', 'increase-sprite', 'stealth-sailboat'].includes(selectedCard.id) && (
                     <div className="w-full max-w-2xl bg-slate-50 rounded-xl border border-slate-200 p-2 shadow-inner flex justify-center items-center overflow-hidden min-h-[300px]">
                       {typeof selectedCard.icon === 'string' ? (
                         <img 

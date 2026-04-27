@@ -502,9 +502,8 @@ const SEND_ENVELOPE_OPTIONS = [
 
 // Graphical options for Set Speed block
 const SPEED_OPTIONS = [
-    // Medium is first to be the default
-    [{ 'src': 'https://codejr.org/scratchjr/assets/blockicons/speed1.svg', 'width': 60, 'height': 50, 'alt': 'Medium' }, 'medium'],
     [{ 'src': 'https://codejr.org/scratchjr/assets/blockicons/speed0.svg', 'width': 60, 'height': 50, 'alt': 'Slow' }, 'slow'],
+    [{ 'src': 'https://codejr.org/scratchjr/assets/blockicons/speed1.svg', 'width': 60, 'height': 50, 'alt': 'Medium' }, 'medium'],
     [{ 'src': 'https://codejr.org/scratchjr/assets/blockicons/speed2.svg', 'width': 60, 'height': 50, 'alt': 'Fast' }, 'fast'],
 ];
 
@@ -564,6 +563,15 @@ const initializeBlocks = () => {
             // `this` refers to the dropdown field instance here
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const self = this as any;
+
+            // Add custom class to DropDownDiv for specific block styling
+            const sourceBlock = self.getSourceBlock();
+            const contentDiv = Blockly.DropDownDiv.getContentDiv();
+            if (sourceBlock && sourceBlock.type === 'control_set_speed') {
+                contentDiv.classList.add('speed-dropdown-wrapper');
+            } else {
+                contentDiv.classList.remove('speed-dropdown-wrapper');
+            }
             
             // Temporarily override getOptions to hide 'ANY' from the menu
             const originalGetOptions = self.getOptions;

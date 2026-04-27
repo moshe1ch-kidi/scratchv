@@ -332,7 +332,34 @@
   box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
 }
 
-/* Ensure image inside fits well and is the size of the square */
+/* --- Speed Dropdown Specific Enhancements --- */
+.speed-dropdown-wrapper .goog-menu {
+    grid-template-columns: repeat(3, 1fr) !important; /* Forces 3 items horizontally */
+    background: #FFEDD5 !important; /* Match Control category background */
+    padding: 10px !important;
+    gap: 10px !important;
+}
+
+.speed-dropdown-wrapper .goog-menuitem {
+    background-color: #F5A623 !important; /* Block Orange color */
+    width: 60px !important;
+    height: 60px !important;
+    border-radius: 12px !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.speed-dropdown-wrapper .goog-menuitem-hover {
+    border-color: white !important;
+    background-color: #fbbf24 !important; /* Slightly lighter orange */
+}
+
+.speed-dropdown-wrapper .goog-menuitem img {
+    width: 70% !important; /* Scaled down as requested */
+    height: 70% !important;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
+}
+
+/* Ensure content inside fits well and is the size of the square */
 .blocklyDropDownDiv .goog-menuitem-content {
     display: flex !important;
     align-items: center !important;

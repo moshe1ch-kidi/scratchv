@@ -1,4 +1,4 @@
- import React, { useRef, useMemo, useState, useLayoutEffect, useEffect } from 'react';
+import React, { useRef, useMemo, useState, useLayoutEffect, useEffect } from 'react';
 import { Sprite, SpriteState } from '../types';
 
 // Grid constants
@@ -160,8 +160,8 @@ const SpriteCharacter: React.FC<{
                         marginBottom: `${8 + (imageSize * (state.scale - 1)) / 2}px` 
                     }}
                 >
-                    <div className="bg-sky-400 border-[3px] border-blue-600 rounded-2xl px-4 py-2 shadow-lg min-w-[100px] text-center whitespace-nowrap relative">
-                        <span className="text-lg font-bold text-white font-sans">{state.message}</span>
+                    <div className="bg-sky-400 border-[3px] border-blue-600 rounded-2xl px-5 py-3 shadow-lg min-w-[140px] max-w-[600px] text-center relative">
+                        <span className="text-base font-bold text-white font-sans whitespace-normal break-words block leading-tight">{state.message}</span>
                         {/* Triangle Tail */}
                         {/* Outer triangle (border) */}
                         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[10px] border-t-blue-600 z-10"></div>

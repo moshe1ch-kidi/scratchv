@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+ import React, { useState, useMemo } from 'react';
 
 const BACKGROUND_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Arctic.svg',
@@ -40,7 +40,8 @@ const BACKGROUND_URLS = [
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/tress.svg',
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/greenfiled.svg',
   'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/city2.svg',
-  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/greenforrest.svg'
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/greenforrest.svg',
+  'https://raw.githubusercontent.com/moshe1ch-kidi/scratchv/refs/heads/main/bg/basketball.svg'
 ];
 
 interface BackgroundGalleryProps {

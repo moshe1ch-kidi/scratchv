@@ -1,4 +1,4 @@
- import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
@@ -306,17 +306,21 @@ const App: React.FC = () => {
   }, []);
 
   const updateRuntimeSprite = useCallback((spriteId: string, updater: (prev: SpriteState) => SpriteState) => {
-    setAndSyncRuntimeSpriteStates(prevStates => {
-      const stateBeforeUpdate = prevStates[spriteId] || INITIAL_SPRITE_STATE;
-      const stateAfterUpdate = updater(stateBeforeUpdate);
-      const normalized = normalizeSpriteState(stateAfterUpdate);
-      
-      return {
-        ...prevStates,
-        [spriteId]: normalized
-      };
-    });
-  }, [setAndSyncRuntimeSpriteStates, normalizeSpriteState]);
+    // 1. Sync Ref immediately so intermediate reads (collisions, logic) are accurate
+    const currentRefState = runtimeSpriteStatesRef.current[spriteId] || INITIAL_SPRITE_STATE;
+    const updatedRefState = normalizeSpriteState(updater(currentRefState));
+    
+    runtimeSpriteStatesRef.current = {
+      ...runtimeSpriteStatesRef.current,
+      [spriteId]: updatedRefState
+    };
+
+    // 2. Trigger visual update
+    setRuntimeSpriteStates(prev => ({
+      ...prev,
+      [spriteId]: normalizeSpriteState(updater(prev[spriteId] || INITIAL_SPRITE_STATE))
+    }));
+  }, [normalizeSpriteState]);
 
   const resetPageSprites = useCallback(() => {
       const page = pages.find(p => p.id === currentPageId);
@@ -399,19 +403,19 @@ const App: React.FC = () => {
       // Configuration for different speed settings
       const SPEED_CONFIG = {
           slow: { 
-              pps: 100,          // Very Slow (New)
-              turnDuration: 800, // Very Slow Rotation
-              hopDuration: 1500  // Very Slow Hop
+              pps: 1, // units per second now
+              duration: 1000, // 1 unit = 1000ms
+              turnDuration: 800,
           },
           medium: { 
-              pps: 200,          // Formerly Slow
-              turnDuration: 400, 
-              hopDuration: 1000
+              pps: 2, 
+              duration: 500, // 1 unit = 500ms
+              turnDuration: 400,
           },
           fast: { 
-              pps: 800,          // Formerly Medium
-              turnDuration: 100, 
-              hopDuration: 500
+              pps: 5,
+              duration: 200, // 1 unit = 200ms
+              turnDuration: 100,
           }
       };
 
@@ -426,14 +430,17 @@ const App: React.FC = () => {
       const wait = (tenths: number) => {
         return new Promise<void>((resolve, reject) => {
           if (tenths === 0) {
+             // In ScratchJr, running blocks in a sequence should be as fast as possible.
+             // We only yield to the event loop sparingly to prevent UI lockup.
              const now = performance.now();
-             if (now - lastYieldTimeRef.current > 16) {
+             if (now - lastYieldTimeRef.current > 32) { // Increased threshold to 32ms
                  requestAnimationFrame(() => {
                     lastYieldTimeRef.current = performance.now();
                     if (!executionControllerRef.current.stop) resolve();
                     else reject(new Error('EXECUTION_STOPPED'));
                  });
              } else {
+                 // Immediate execution for the next block to stay in sync
                  Promise.resolve().then(() => {
                     if (!executionControllerRef.current.stop) resolve();
                     else reject(new Error('EXECUTION_STOPPED'));
@@ -483,12 +490,14 @@ const App: React.FC = () => {
           });
       };
 
-      const animateMovement = (duration: number, updateFn: (progress: number) => void): Promise<void> => {
+      const animateMovement = (duration: number, updateFn: (progress: number, delta: number) => void): Promise<void> => {
         return new Promise<void>((resolve, reject) => {
             // FIX: Ensure duration is at least 1 frame (16ms) to prevent div-by-zero or near-instant completion issues
             const safeDuration = Math.max(duration, 16); 
             
             let start: number | null = null;
+            let prevProgress = 0;
+
             const step = (timestamp: number) => {
                 if (executionControllerRef.current.stop) return reject(new Error('EXECUTION_STOPPED'));
                 
@@ -503,10 +512,12 @@ const App: React.FC = () => {
                 }
                 const elapsed = timestamp - start;
                 const progress = Math.min(elapsed / safeDuration, 1);
+                const delta = progress - prevProgress;
+                prevProgress = progress;
                 
                 // Safely update
                 try {
-                    updateFn(progress);
+                    updateFn(progress, delta);
                     checkCollisions(spriteId); // Check for collisions after update
                 } catch(e) {
                     console.error("Animation update failed", e);
@@ -544,119 +555,82 @@ const App: React.FC = () => {
       };
 
       // Renamed to animateGridMovement to reflect input type
-      const animateGridMovement = async (gridSteps: number, updateLogic: (p: number, gridDelta: number) => void) => {
-          const currentCell = cellSizeRef.current || 48; // Fallback if 0
+      const animateGridMovement = async (gridSteps: number, updateLogic: (p: number, delta: number, gridDelta: number) => void) => {
+          // Duration is now fixed per "unit" to match ScratchJr behavior
+          const { duration } = getSpeedSettings();
+          const totalDuration = Math.abs(gridSteps) * duration;
           
-          // Calculate total pixel distance based on grid steps
-          const pixelDistance = Math.abs(gridSteps) * currentCell;
-          
-          // Duration based on current sprite speed state
-          const { pps } = getSpeedSettings();
-          const duration = (pixelDistance / pps) * 1000;
-          
-          // OPTIMIZATION: If the duration is extremely short (e.g. < 18ms, approx 1 frame), 
-          // perform the update instantly without setting up the animation loop.
-          // This allows "Forever -> Move 0.1" loops to run smoothly at max framerate 
-          if (duration < 18) {
-              updateLogic(1, gridSteps);
+          if (totalDuration < 18) {
+              updateLogic(1, 1, gridSteps);
               checkCollisions(spriteId);
               return;
           }
 
-          await animateMovement(duration, (p) => updateLogic(p, gridSteps));
+          await animateMovement(totalDuration, (p, dp) => updateLogic(p, dp, gridSteps));
       };
 
       const turnRight = async (steps: number) => {
         // Rotation remains grid/angle based: 1 step = 15 degrees
         const totalRotation = steps * 15; 
-        const startState = runtimeSpriteStatesRef.current[spriteId];
-        const targetRotation = startState.rotation + totalRotation;
         const { turnDuration } = getSpeedSettings();
-        
-        // Calculate duration based on amount of rotation and speed
-        // Adjusted divisor to 45 to speed up larger rotations
         const duration = Math.max(100, (Math.abs(totalRotation) / 45) * turnDuration);
 
-        await animateMovement(duration, (p) => {
-            updateRuntimeSprite(spriteId, s => ({...s, rotation: startState.rotation + totalRotation * p}));
+        await animateMovement(duration, (p, dp) => {
+            updateRuntimeSprite(spriteId, s => ({...s, rotation: s.rotation + totalRotation * dp}));
         });
-        
-        // Final Commit - ensures perfect accuracy for loop
-        commitStateUpdate(s => ({...s, rotation: targetRotation}));
       };
       
       const turnLeft = async (steps: number) => {
         const totalRotation = steps * 15;
-        const startState = runtimeSpriteStatesRef.current[spriteId];
-        const targetRotation = startState.rotation - totalRotation;
         const { turnDuration } = getSpeedSettings();
-
-        // Calculate duration based on amount of rotation and speed
-        // Adjusted divisor to 45 to speed up larger rotations
         const duration = Math.max(100, (Math.abs(totalRotation) / 45) * turnDuration);
 
-        await animateMovement(duration, (p) => {
-            updateRuntimeSprite(spriteId, s => ({...s, rotation: startState.rotation - totalRotation * p}));
+        await animateMovement(duration, (p, dp) => {
+            updateRuntimeSprite(spriteId, s => ({...s, rotation: s.rotation - totalRotation * dp}));
         });
-        
-        // Final Commit - ensures perfect accuracy for loop
-        commitStateUpdate(s => ({...s, rotation: targetRotation}));
       };
       
       return {
         moveRight: async (steps: number) => {
-          const startState = runtimeSpriteStatesRef.current[spriteId];
-          const targetX = startState.x + steps;
-          
-          await animateGridMovement(steps, (p, gridDelta) => 
-             updateRuntimeSprite(spriteId, s => ({...s, x: startState.x + gridDelta * p, direction: 1}))
+          await animateGridMovement(steps, (p, dp, gridDelta) => 
+             updateRuntimeSprite(spriteId, s => ({...s, x: s.x + gridDelta * dp, direction: 1}))
           );
-          // Snap to exact position
-          commitStateUpdate(s => ({...s, x: targetX, direction: 1}));
         },
         moveLeft: async (steps: number) => {
-          const startState = runtimeSpriteStatesRef.current[spriteId];
-          const targetX = startState.x - steps;
-          
-          await animateGridMovement(steps, (p, gridDelta) => 
-             updateRuntimeSprite(spriteId, s => ({...s, x: startState.x - gridDelta * p, direction: -1}))
+          await animateGridMovement(steps, (p, dp, gridDelta) => 
+             updateRuntimeSprite(spriteId, s => ({...s, x: s.x - gridDelta * dp, direction: -1}))
           );
-          // Snap to exact position
-          commitStateUpdate(s => ({...s, x: targetX, direction: -1}));
         },
         moveUp: async (steps: number) => {
-          const startState = runtimeSpriteStatesRef.current[spriteId];
-          const targetY = startState.y + steps;
-          
-          await animateGridMovement(steps, (p, gridDelta) => 
-             updateRuntimeSprite(spriteId, s => ({...s, y: startState.y + gridDelta * p}))
+          await animateGridMovement(steps, (p, dp, gridDelta) => 
+             updateRuntimeSprite(spriteId, s => ({...s, y: s.y + gridDelta * dp}))
           );
-          // Snap to exact position
-          commitStateUpdate(s => ({...s, y: targetY}));
         },
         moveDown: async (steps: number) => {
-          const startState = runtimeSpriteStatesRef.current[spriteId];
-          const targetY = startState.y - steps;
-          
-          await animateGridMovement(steps, (p, gridDelta) => 
-             updateRuntimeSprite(spriteId, s => ({...s, y: startState.y - gridDelta * p}))
+          await animateGridMovement(steps, (p, dp, gridDelta) => 
+             updateRuntimeSprite(spriteId, s => ({...s, y: s.y - gridDelta * dp}))
           );
-          // Snap to exact position
-          commitStateUpdate(s => ({...s, y: targetY}));
         },
         turnRight,
         turnLeft,
-        hop: async (height: number) => {
-            const startState = runtimeSpriteStatesRef.current[spriteId];
-            const { hopDuration } = getSpeedSettings();
+        hop: async (steps: number) => {
+            const hopHeight = steps;
+            const { duration } = getSpeedSettings();
+            let accumulatedHopY = 0;
             
-            // Hop height argument scales the visual height, but duration is controlled by speed setting
-            await animateMovement(hopDuration, p => {
-                const yOffset = 4 * height * (p - (p * p));
-                updateRuntimeSprite(spriteId, s => ({...s, y: startState.y + yOffset}));
+            await animateMovement(duration, (p) => {
+                // Parabolic arc: 4 * h * (p - p^2) in grid units
+                const targetHopOffset = 4 * hopHeight * (p - (p * p));
+                const dy = targetHopOffset - accumulatedHopY;
+                accumulatedHopY = targetHopOffset;
+                
+                updateRuntimeSprite(spriteId, s => ({...s, y: s.y + dy}));
             });
-            // Ensure we land exactly back on the original Y
-            commitStateUpdate(s => ({...s, y: startState.y}));
+
+            // CRITICAL: Ensure we return exactly to the original Y relative to other movements
+            if (accumulatedHopY !== 0) {
+                updateRuntimeSprite(spriteId, s => ({...s, y: s.y - accumulatedHopY}));
+            }
         },
         goHome: async () => {
             const sprite = currentPage.sprites.find(s => s.id === spriteId);
@@ -664,13 +638,13 @@ const App: React.FC = () => {
             const startState = runtimeSpriteStatesRef.current[spriteId];
             const targetState = sprite.initialState;
             updateRuntimeSprite(spriteId, s => ({ ...s, visible: false }));
-            await animateMovement(500, p => {
+            await animateMovement(500, (p, dp) => {
                 updateRuntimeSprite(spriteId, s => ({
                     ...s,
-                    x: startState.x + (targetState.x - startState.x) * p,
-                    y: startState.y + (targetState.y - startState.y) * p,
-                    rotation: startState.rotation + (targetState.rotation - startState.rotation) * p,
-                    scale: startState.scale + (targetState.scale - startState.scale) * p,
+                    x: s.x + (targetState.x - startState.x) * dp,
+                    y: s.y + (targetState.y - startState.y) * dp,
+                    rotation: s.rotation + (targetState.rotation - startState.rotation) * dp,
+                    scale: s.scale + (targetState.scale - startState.scale) * dp,
                     visible: false,
                 }));
             });

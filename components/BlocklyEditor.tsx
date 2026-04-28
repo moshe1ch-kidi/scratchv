@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+ import React, { useState, useRef } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import * as En from 'blockly/msg/en';
@@ -885,8 +885,8 @@ const initializeBlocks = () => {
         }
     };
     registerGenerator('control_wait', (block: any) => {
-        const ms = Number(block.getFieldValue('MS')) || 0;
-        return `await wait(${ms});\n`;
+        const steps = Number(block.getFieldValue('STEPS')) || 0;
+        return `await wait(${steps});\n`;
     });
 
     Blockly.Blocks['control_stop'] = {

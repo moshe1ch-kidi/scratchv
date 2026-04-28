@@ -660,7 +660,7 @@ const App: React.FC = () => {
         },
         say: async (message: string) => {
           updateRuntimeSprite(spriteId, s => ({...s, message}));
-          await wait(20);
+          await wait(50);
           updateRuntimeSprite(spriteId, s => ({...s, message: null}));
         },
         grow: async () => { updateRuntimeSprite(spriteId, s => ({...s, scale: s.scale * 1.25})); await wait(2); },

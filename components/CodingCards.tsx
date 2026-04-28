@@ -165,7 +165,7 @@ const CARDS: CardData[] = [
   {
     id: 'stackidi',
     title: 'Introducing STACKIDI',
-    icon: <Video className="w-16 h-16 text-white" />,
+    icon: <Video className="w-12 h-12 text-white" />,
     description: <YoutubeEmbed url="https://www.youtube.com/watch?v=0bpgxclrEAI" />,
     color: '#4B8CC2'
   },
@@ -173,7 +173,7 @@ const CARDS: CardData[] = [
   {
     id: 'sprites-help',
     title: 'SPRITES',
-    icon: <Video className="w-16 h-16 text-white" />,
+    icon: <Video className="w-12 h-12 text-white" />,
     description: <YoutubeEmbed url="https://www.youtube.com/watch?v=96dYRjJpL3M" />,
     color: '#9013FE'
   },
@@ -181,7 +181,7 @@ const CARDS: CardData[] = [
   {
     id: 'pages-help',
     title: 'pages',
-    icon: <Video className="w-16 h-16 text-white" />,
+    icon: <Video className="w-12 h-12 text-white" />,
     description: <YoutubeEmbed url="https://www.youtube.com/watch?v=uzfGiala1_k" />,
     color: '#7ED321'
   },
@@ -189,7 +189,7 @@ const CARDS: CardData[] = [
   {
     id: 'first-code',
     title: 'FIRST CODE',
-    icon: <Video className="w-16 h-16 text-white" />,
+    icon: <Video className="w-12 h-12 text-white" />,
     description: <YoutubeEmbed url="https://www.youtube.com/watch?v=rN0R8Qils2k" />,
     color: '#D0021B'
   },
@@ -197,7 +197,7 @@ const CARDS: CardData[] = [
   {
     id: 'acrobatic',
     title: 'Acrobatic',
-    icon: <Video className="w-16 h-16 text-white" />,
+    icon: <Video className="w-12 h-12 text-white" />,
     description: <YoutubeEmbed url="https://www.youtube.com/watch?v=uspPhcZWPe8" />,
     color: '#F8E71C'
   },
@@ -205,7 +205,7 @@ const CARDS: CardData[] = [
   {
     id: 'increase-sprite',
     title: 'Increase the Sprite',
-    icon: <Video className="w-16 h-16 text-white" />,
+    icon: <Video className="w-12 h-12 text-white" />,
     description: <YoutubeEmbed url="https://www.youtube.com/watch?v=4KugwjWkh4s" />,
     color: '#4A90E2'
   },
@@ -213,7 +213,7 @@ const CARDS: CardData[] = [
   {
     id: 'stealth-sailboat',
     title: 'The Stealth Sailboat',
-    icon: <Video className="w-16 h-16 text-white" />,
+    icon: <Video className="w-12 h-12 text-white" />,
     description: <YoutubeEmbed url="https://www.youtube.com/watch?v=ExAqPpGjf4k" />,
     color: '#F5A623'
   },
@@ -249,7 +249,7 @@ const CodingCards: React.FC<CodingCardsProps> = ({ onClose }) => {
 
         {/* Content Grid */}
         <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
-          <div className="grid grid-cols-4 gap-4 auto-rows-fr">
+          <div className="grid grid-cols-5 sm:grid-cols-6 lg:grid-cols-7 gap-4 auto-rows-fr">
             {CARDS.map((card) => (
               <button
                 key={card.id}
@@ -270,7 +270,7 @@ const CodingCards: React.FC<CodingCardsProps> = ({ onClose }) => {
                     card.icon
                   )}
                 </div>
-                <div className="w-full bg-[#4B8CC2] text-white text-center py-2 text-sm font-bold shrink-0">
+                <div className="w-full bg-[#4B8CC2] text-white text-center py-2 text-xs font-bold shrink-0 line-clamp-1 px-1">
                   {card.title}
                 </div>
               </button>

@@ -217,9 +217,25 @@ const CARDS: CardData[] = [
     description: <YoutubeEmbed url="https://www.youtube.com/watch?v=ExAqPpGjf4k" />,
     color: '#F5A623'
   },
+  // Card 10: start on bump
+  {
+    id: 'start-on-bump',
+    title: 'start on bump',
+    icon: <Video className="w-12 h-12 text-white" />,
+    description: <YoutubeEmbed url="https://www.youtube.com/watch?v=Vtv8D6aN2lw" />,
+    color: '#7ED321'
+  },
+  // Card 11: girl jump ball
+  {
+    id: 'girl-jump-ball',
+    title: 'girl jump ball',
+    icon: <Video className="w-12 h-12 text-white" />,
+    description: <YoutubeEmbed url="https://www.youtube.com/watch?v=tWL1MNxiOkI" />,
+    color: '#4A90E2'
+  },
   // Generate remaining dummy cards to fill 4x7 grid (total 28)
-  // We have 9 real cards now, so we need 19 dummy cards.
-  ...Array.from({ length: 19 }, (_, i) => createDummyCard(i + 9))
+  // We have 11 real cards now, so we need 17 dummy cards.
+  ...Array.from({ length: 17 }, (_, i) => createDummyCard(i + 11))
 ];
 
 interface CodingCardsProps {
@@ -292,7 +308,7 @@ const CodingCards: React.FC<CodingCardsProps> = ({ onClose }) => {
               <div className="p-6 overflow-y-auto flex-1">
                 <div className="flex flex-col items-center gap-6">
                   {/* Large Image - Hide for blocks guide and video cards */}
-                  {!['blocks', 'stackidi', 'sprites-help', 'pages-help', 'first-code', 'acrobatic', 'increase-sprite', 'stealth-sailboat'].includes(selectedCard.id) && (
+                  {!['blocks', 'stackidi', 'sprites-help', 'pages-help', 'first-code', 'acrobatic', 'increase-sprite', 'stealth-sailboat', 'start-on-bump', 'girl-jump-ball'].includes(selectedCard.id) && (
                     <div className="w-full max-w-2xl bg-slate-50 rounded-xl border border-slate-200 p-2 shadow-inner flex justify-center items-center overflow-hidden min-h-[300px]">
                       {typeof selectedCard.icon === 'string' ? (
                         <img 

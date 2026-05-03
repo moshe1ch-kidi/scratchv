@@ -238,7 +238,7 @@ const CARDS: CardData[] = [
     id: 'messages',
     title: 'Messages',
     icon: <Video className="w-12 h-12 text-white" />,
-    description: <YoutubeEmbed url="https://www.youtube.com/watch?v=VIDEO_ID" />,
+    description: <YoutubeEmbed url="https://www.youtube.com/watch?v=tzzfmic8Ed8" />,
     color: '#F5A623'
   },
   // Generate remaining dummy cards to fill 4x7 grid (total 28)

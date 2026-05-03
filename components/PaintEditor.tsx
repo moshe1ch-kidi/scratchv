@@ -1,4 +1,4 @@
- import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Sprite } from '../types';
 
 // --- Type Definitions ---
@@ -39,8 +39,16 @@ interface PathShape extends ShapeBase {
   d: string;
 }
 
-type Shape = RectShape | CircleShape | LineShape | PathShape;
-type Tool = 'select' | 'rect' | 'circle' | 'line' | 'freehand';
+interface TriangleShape extends ShapeBase {
+  type: 'triangle';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+type Shape = RectShape | CircleShape | LineShape | PathShape | TriangleShape;
+type Tool = 'select' | 'rect' | 'circle' | 'line' | 'freehand' | 'triangle';
 
 
 // --- Shape Data for Gallery ---
@@ -649,8 +657,10 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     let newShape: Shape | null = null;
     switch (activeTool) {
         case 'rect':
-            newShape = { id: `s-${Date.now()}`, type: 'rect', x: pos.x, y: pos.y, width: 0, height: 0, fill: fillColor, stroke: strokeColor, strokeWidth: strokeWidth };
+        case 'triangle': {
+            newShape = { id: `s-${Date.now()}`, type: activeTool, x: pos.x, y: pos.y, width: 0, height: 0, fill: fillColor, stroke: strokeColor, strokeWidth: strokeWidth } as any;
             break;
+        }
         case 'circle':
             newShape = { id: `s-${Date.now()}`, type: 'circle', cx: pos.x, cy: pos.y, rx: 0, ry: 0, fill: fillColor, stroke: strokeColor, strokeWidth: strokeWidth };
             break;
@@ -668,12 +678,15 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     if (isDrawing && drawingShape && startPointRef.current) {
         const pos = getMousePosition(e);
         switch (drawingShape.type) {
-            case 'rect': {
+            case 'rect':
+            case 'triangle': {
                 const startX = startPointRef.current.x;
                 const startY = startPointRef.current.y;
                 const newX = Math.min(pos.x, startX);
                 const newY = Math.min(pos.y, startY);
-                setDrawingShape({ ...drawingShape, x: newX, y: newY, width: Math.abs(pos.x - startX), height: Math.abs(pos.y - startY) });
+                if (drawingShape.type === 'rect' || drawingShape.type === 'triangle') {
+                    setDrawingShape({ ...drawingShape, x: newX, y: newY, width: Math.abs(pos.x - startX), height: Math.abs(pos.y - startY) });
+                }
                 break;
             }
             case 'circle': {
@@ -729,7 +742,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
   const handleMouseUp = () => {
     if (drawingShape) {
       let isValid = false;
-      if (drawingShape.type === 'rect') isValid = drawingShape.width > 2 || drawingShape.height > 2;
+      if (drawingShape.type === 'rect' || drawingShape.type === 'triangle') isValid = drawingShape.width > 2 || drawingShape.height > 2;
       else if (drawingShape.type === 'circle') isValid = drawingShape.rx > 2 || drawingShape.ry > 2;
       else if (drawingShape.type === 'line') isValid = Math.abs(drawingShape.x1 - drawingShape.x2) > 2 || Math.abs(drawingShape.y1 - drawingShape.y2) > 2;
       else if (drawingShape.type === 'path') isValid = drawingShape.d.includes('L');
@@ -798,6 +811,10 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
         switch (shape.type) {
             case 'rect':
                 return `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" ${attrs} ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
+            case 'triangle': {
+                const points = `${shape.x + shape.width / 2},${shape.y} ${shape.x + shape.width},${shape.y + shape.height} ${shape.x},${shape.y + shape.height}`;
+                return `<polygon points="${points}" ${attrs} ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
+            }
             case 'circle':
                 return `<ellipse cx="${shape.cx}" cy="${shape.cy}" rx="${shape.rx}" ry="${shape.ry}" ${attrs} ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
             case 'line':
@@ -857,7 +874,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
       if (!selectedShapeId) return;
       pushToHistory(shapes);
       setShapes(shapes.map(s => {
-          if (s.id === selectedShapeId && (s.type === 'rect' || s.type === 'circle' || s.type === 'path')) {
+          if (s.id === selectedShapeId && (s.type === 'rect' || s.type === 'triangle' || s.type === 'circle' || s.type === 'path')) {
               return { ...s, fill: s.fill === 'transparent' ? fillColor : 'transparent' };
           }
           return s;
@@ -889,7 +906,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
         if (selectedShapeId) {
             setShapes(prev => prev.map(s => {
                 if (s.id !== selectedShapeId) return s;
-                if (s.type === 'rect' || s.type === 'circle' || s.type === 'path') {
+                if (s.type === 'rect' || s.type === 'triangle' || s.type === 'circle' || s.type === 'path') {
                     return { ...s, fill: color };
                 }
                 return s;
@@ -1090,6 +1107,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     let baseBox = { x: 0, y: 0, width: 0, height: 0 };
     switch (shape.type) {
         case 'rect': 
+        case 'triangle':
             baseBox = { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
             break;
         case 'circle': 
@@ -1177,6 +1195,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
                 <div className="w-full border-t border-slate-200 my-1"></div>
                 <ToolButton icon="fa-slash" label="Line" active={activeTool === 'line'} onClick={() => handleToolSelect('line')} iconColor="text-sky-600" />
                 <ToolButton icon="fa-square" label="Rectangle" active={activeTool === 'rect'} onClick={() => handleToolSelect('rect')} iconColor="text-sky-600" />
+                <ToolButton icon="fa-caret-up" label="Triangle" active={activeTool === 'triangle'} onClick={() => handleToolSelect('triangle')} iconColor="text-sky-600" />
                 <ToolButton icon="fa-circle" label="Circle" active={activeTool === 'circle'} onClick={() => handleToolSelect('circle')} iconColor="text-sky-600" />
                 <ToolButton icon="fa-shapes" label="Shapes" onClick={() => setIsShapeGalleryOpen(true)} iconColor="text-purple-600" />
                 <ToolButton icon="fa-pencil-alt" label="Freehand" active={activeTool === 'freehand'} onClick={() => handleToolSelect('freehand')} iconColor="text-sky-600" />
@@ -1208,12 +1227,25 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
                       if (shape.type === 'line') {
                           return <line key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} x1={shape.x1} y1={shape.y1} x2={shape.x2} y2={shape.y2} strokeLinecap="round"/>;
                       }
+                      if (shape.type === 'triangle') {
+                          const points = `${shape.x + shape.width / 2},${shape.y} ${shape.x + shape.width},${shape.y + shape.height} ${shape.x},${shape.y + shape.height}`;
+                          return <polygon key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} points={points} />;
+                      }
                       if (shape.type === 'path') {
                           return <path key={shape.id} ref={elementRef} {...commonProps} d={shape.d} transform={shape.transform} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>;
                       }
                       return null;
                     })}
                     {drawingShape?.type === 'rect' && <rect {...drawingShape} fillOpacity="0.5" />}
+                    {drawingShape?.type === 'triangle' && (
+                        <polygon 
+                            points={`${drawingShape.x + drawingShape.width / 2},${drawingShape.y} ${drawingShape.x + drawingShape.width},${drawingShape.y + drawingShape.height} ${drawingShape.x},${drawingShape.y + drawingShape.height}`}
+                            fill={drawingShape.fill}
+                            stroke={drawingShape.stroke}
+                            strokeWidth={drawingShape.strokeWidth}
+                            fillOpacity="0.5"
+                        />
+                    )}
                     {drawingShape?.type === 'circle' && <ellipse {...drawingShape} fillOpacity="0.5" />}
                     {drawingShape?.type === 'line' && <line {...drawingShape} strokeOpacity="0.5" strokeLinecap="round" />}
                     {drawingShape?.type === 'path' && <path {...drawingShape} strokeOpacity="0.5" strokeLinejoin="round" strokeLinecap="round"/>}

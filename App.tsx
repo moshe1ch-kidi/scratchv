@@ -1,4 +1,4 @@
- import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
@@ -864,12 +864,29 @@ const App: React.FC = () => {
     setAndSyncRuntimeSpriteStates(s => ({ ...s, [newPage.sprites[0].id]: newPage.sprites[0].initialState }));
   };
 
-  const handleAddSpriteFromGallery = (costumeUrl: string) => {
-      const name = costumeUrl.startsWith('data:image') ? `Drawing ${currentPage.sprites.length + 1}` : costumeUrl.split('/').pop()?.split('.')[0] || `Sprite ${currentPage.sprites.length + 1}`;
-      const newSprite = createNewSprite(name, costumeUrl);
-      setPages(pages.map(p => p.id === currentPageId ? {...p, sprites: [...p.sprites, newSprite]} : p ));
-      setAndSyncRuntimeSpriteStates(s => ({ ...s, [newSprite.id]: newSprite.initialState }));
-      setActiveSpriteId(newSprite.id);
+  const handleAddSpritesFromGallery = (costumeUrls: string[]) => {
+      const newSprites = costumeUrls.map((url, index) => {
+          const baseName = url.startsWith('data:image') ? `Drawing ${currentPage.sprites.length + 1 + index}` : url.split('/').pop()?.split('.')[0] || `Sprite ${currentPage.sprites.length + 1 + index}`;
+          const sprite = createNewSprite(baseName, url);
+          // Apply a small offset if adding multiple sprites so they don't overlap perfectly
+          if (costumeUrls.length > 1) {
+              sprite.initialState.x += (index * 0.5);
+              sprite.initialState.y += (index * 0.5);
+          }
+          return sprite;
+      });
+
+      setPages(pages.map(p => p.id === currentPageId ? {...p, sprites: [...p.sprites, ...newSprites]} : p ));
+      
+      const newRuntimeStates = { ...runtimeSpriteStatesRef.current };
+      newSprites.forEach(s => {
+          newRuntimeStates[s.id] = s.initialState;
+      });
+      setAndSyncRuntimeSpriteStates(() => newRuntimeStates);
+      
+      if (newSprites.length > 0) {
+          setActiveSpriteId(newSprites[newSprites.length - 1].id);
+      }
       setIsGalleryOpen(false);
   };
 
@@ -1021,7 +1038,7 @@ const App: React.FC = () => {
   };
 
   const handleSavePaintedSprite = (svgDataUrl: string) => {
-      handleAddSpriteFromGallery(svgDataUrl);
+      handleAddSpritesFromGallery([svgDataUrl]);
       setIsPaintEditorOpen(false);
   };
 
@@ -1314,7 +1331,7 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
-      {isGalleryOpen && <SpriteGallery onClose={() => setIsGalleryOpen(false)} onSelect={handleAddSpriteFromGallery} onPaintNew={handleOpenPaintEditorForNew} />}
+      {isGalleryOpen && <SpriteGallery onClose={() => setIsGalleryOpen(false)} onSelect={handleAddSpritesFromGallery} onPaintNew={handleOpenPaintEditorForNew} />}
       {isBgGalleryOpen && <BackgroundGallery onClose={() => setIsBgGalleryOpen(false)} onSelect={handleBackgroundSelect} />}
       {isPaintEditorOpen && <PaintEditor 
           onClose={() => {

@@ -1,4 +1,4 @@
- import React, { useState } from 'react';
+import React, { useState } from 'react';
 
 import { Video } from 'lucide-react';
 
@@ -228,7 +228,7 @@ const CARDS: CardData[] = [
   // Card 11: girl jump ball
   {
     id: 'girl-jump-ball',
-    title: 'girl jump ball',
+    title: 'Girl Dribbling Ball',
     icon: <Video className="w-12 h-12 text-white" />,
     description: <YoutubeEmbed url="https://www.youtube.com/watch?v=tWL1MNxiOkI" />,
     color: '#4A90E2'
@@ -249,9 +249,17 @@ const CARDS: CardData[] = [
     description: <YoutubeEmbed url="https://www.youtube.com/watch?v=TwDXr6n886w" />,
     color: '#D0021B'
   },
+  // Card 14: Aquarium
+  {
+    id: 'aquarium',
+    title: 'Aquarium',
+    icon: <Video className="w-12 h-12 text-white" />,
+    description: <YoutubeEmbed url="https://www.youtube.com/watch?v=kM4kE5Lk7dE" />,
+    color: '#4A90E2'
+  },
   // Generate remaining dummy cards to fill 4x7 grid (total 28)
-  // We have 13 real cards now, so we need 15 dummy cards.
-  ...Array.from({ length: 15 }, (_, i) => createDummyCard(i + 13))
+  // We have 14 real cards now, so we need 14 dummy cards.
+  ...Array.from({ length: 14 }, (_, i) => createDummyCard(i + 14))
 ];
 
 interface CodingCardsProps {
@@ -324,7 +332,7 @@ const CodingCards: React.FC<CodingCardsProps> = ({ onClose }) => {
               <div className="p-6 overflow-y-auto flex-1">
                 <div className="flex flex-col items-center gap-6">
                   {/* Large Image - Hide for blocks guide and video cards */}
-                  {!['blocks', 'stackidi', 'sprites-help', 'pages-help', 'first-code', 'acrobatic', 'increase-sprite', 'stealth-sailboat', 'start-on-bump', 'girl-jump-ball', 'messages', 'missile-launch'].includes(selectedCard.id) && (
+                  {!['blocks', 'stackidi', 'sprites-help', 'pages-help', 'first-code', 'acrobatic', 'increase-sprite', 'stealth-sailboat', 'start-on-bump', 'girl-jump-ball', 'messages', 'missile-launch', 'aquarium'].includes(selectedCard.id) && (
                     <div className="w-full max-w-2xl bg-slate-50 rounded-xl border border-slate-200 p-2 shadow-inner flex justify-center items-center overflow-hidden min-h-[300px]">
                       {typeof selectedCard.icon === 'string' ? (
                         <img 

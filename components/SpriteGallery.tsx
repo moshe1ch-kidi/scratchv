@@ -292,35 +292,35 @@ const SpriteGallery: React.FC<SpriteGalleryProps> = ({ onClose, onSelect, onPain
           </div>
           
           {visibleCount < filteredSprites.length && (
-            <div className="flex justify-center mt-6">
+            <div className="flex justify-center mt-8 mb-4">
               <button 
                 onClick={() => setVisibleCount(prev => prev + 24)}
-                className="bg-blue-500 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-600 transition-colors shadow-lg"
+                className="bg-yellow-400 text-yellow-900 px-8 py-3 rounded-full font-black hover:bg-yellow-500 transition-all hover:scale-110 shadow-xl border-4 border-yellow-200 flex items-center gap-2"
               >
-                Load More...
+                <span>✨ Show More ✨</span>
               </button>
             </div>
           )}
         </div>
 
         {/* Footer with Done Button */}
-        <div className="p-4 border-t border-slate-200 bg-white flex justify-center shrink-0">
+        <div className="p-6 border-t-4 border-slate-200 bg-white flex justify-center shrink-0">
           <button 
             onClick={handleDone}
             disabled={selectedUrls.length === 0}
-            className={`px-12 py-3 rounded-2xl font-bold text-lg transition-all shadow-md flex items-center gap-2 ${
+            className={`px-16 py-4 rounded-3xl font-black text-xl transition-all shadow-2xl flex items-center gap-3 border-b-8 active:border-b-0 active:translate-y-2 ${
               selectedUrls.length > 0
-                ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:scale-105 active:scale-95'
-                : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-70'
+                ? 'bg-green-500 text-white hover:bg-green-600 border-green-700 hover:scale-105'
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed border-slate-300 opacity-60'
             }`}
           >
             {selectedUrls.length > 0 ? (
               <>
-                <i className="fas fa-plus"></i>
-                Add {selectedUrls.length} {selectedUrls.length === 1 ? 'Sprite' : 'Sprites'}
+                <i className="fas fa-check-circle"></i>
+                OK! Add {selectedUrls.length} {selectedUrls.length === 1 ? 'Sprite' : 'Sprites'}
               </>
             ) : (
-              'Select a Sprite'
+              'Pick your Sprites!'
             )}
           </button>
         </div>

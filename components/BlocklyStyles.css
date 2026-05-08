@@ -387,7 +387,25 @@
   display: none !important;
 }
 
-/* --- Category Styling --- */
+/* --- Context Menu Customization for Kids --- */
+.blocklyContextMenu .blocklyMenuItemContent {
+    font-size: 25px !important; /* Significantly larger to make emojis prominent */
+    font-weight: 500;
+    padding: 12px 24px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.blocklyContextMenu .blocklyMenuItem {
+    padding: 4px 0 !important;
+}
+
+.blocklyContextMenu {
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
+}
 
 /* Base style for all category rows */
 .category-row {

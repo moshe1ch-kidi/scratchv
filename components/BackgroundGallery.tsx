@@ -1,4 +1,4 @@
- import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 
 const BACKGROUND_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Arctic.svg',
@@ -94,12 +94,12 @@ const BackgroundGallery: React.FC<BackgroundGalleryProps> = ({ onClose, onSelect
           </div>
 
           {visibleCount < BACKGROUND_URLS.length && (
-            <div className="flex justify-center mt-6">
+            <div className="flex justify-center mt-8 mb-4">
               <button 
                 onClick={() => setVisibleCount(prev => prev + 15)}
-                className="bg-blue-500 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-600 transition-colors"
+                className="bg-yellow-400 text-yellow-900 px-8 py-3 rounded-full font-black hover:bg-yellow-500 transition-all hover:scale-110 shadow-xl border-4 border-yellow-200 flex items-center gap-2"
               >
-                Load More...
+                <span>🌈 Show More Backgrounds 🌈</span>
               </button>
             </div>
           )}

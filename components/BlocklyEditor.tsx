@@ -1,4 +1,4 @@
- import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import * as En from 'blockly/msg/en';
@@ -541,7 +541,69 @@ let getPageOptions: () => any[][] = () => [[{src: generatePageIcon('#ffffff', 1)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let getSpriteOptions: () => any[][] = () => [[{src: `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><polygon points="6,10 18,10 12,18" fill="#000000"/></svg>')}`, width: 24, height: 24, alt: 'Any Sprite'}, 'ANY']];
 
+// --- Context Menu Customization ---
+let globalStackClipboardString: string | null = null;
+
+const registerCustomContextMenu = () => {
+    // Check if already registered to avoid errors
+    if (Blockly.ContextMenuRegistry.registry.getItem('copy_block_stack')) {
+        return;
+    }
+
+    // 1. Copy Block Stack (Block Scope)
+    const copyStackItem: Blockly.ContextMenuRegistry.RegistryItem = {
+        displayText: () => '📋 Copy Block Stack',
+        preconditionFn: () => 'enabled',
+        callback: (scope: Blockly.ContextMenuRegistry.Scope) => {
+            if (scope.block) {
+                const xml = Blockly.Xml.blockToDom(scope.block);
+                globalStackClipboardString = Blockly.Xml.domToText(xml);
+            }
+        },
+        scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
+        id: 'copy_block_stack',
+        weight: 0, // Top of the menu
+    };
+    Blockly.ContextMenuRegistry.registry.register(copyStackItem);
+
+    // 2. Paste Block Stack (Workspace Scope)
+    const pasteStackItem: Blockly.ContextMenuRegistry.RegistryItem = {
+        displayText: () => '📥 Paste Block Stack',
+        preconditionFn: () => globalStackClipboardString ? 'enabled' : 'hidden',
+        callback: (scope: Blockly.ContextMenuRegistry.Scope) => {
+            const workspace = scope.workspace as Blockly.WorkspaceSvg;
+            if (globalStackClipboardString && workspace) {
+                try {
+                    const xmlDom = Blockly.utils.xml.textToDom(globalStackClipboardString);
+                    const newBlock = Blockly.Xml.domToBlock(xmlDom, workspace) as Blockly.BlockSvg;
+                    
+                    // Position at mouse event coordinates
+                    const mouseEvent = (scope as any).mouseEvent;
+                    if (mouseEvent) {
+                        const point = Blockly.utils.browserEvents.mouseToSvg(
+                            mouseEvent, 
+                            workspace.getParentSvg(), 
+                            workspace.getInverseScreenCTM()
+                        );
+                        newBlock.moveTo(new Blockly.utils.Coordinate(point.x, point.y));
+                        newBlock.select();
+                    }
+                } catch (e) {
+                    console.error("Paste failed", e);
+                }
+            }
+        },
+        scopeType: Blockly.ContextMenuRegistry.ScopeType.WORKSPACE,
+        id: 'paste_block_stack',
+        weight: 0, // Top of the menu
+    };
+    Blockly.ContextMenuRegistry.registry.register(pasteStackItem);
+};
+
 const initializeBlocks = () => {
+    // Register custom context menu items
+    registerCustomContextMenu();
+    
     // Remove the dropdown arrow character globally to save space and match the design
     (Blockly.FieldDropdown as any).ARROW_CHAR = '';
     

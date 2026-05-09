@@ -9,9 +9,10 @@
   --color-primary-700: #1d4ed8;
 }
 
-/* Global Styles */
-
-/* Custom styles can go here */
+/* Base styles / Custom resets */
+:root {
+  background-color: #f8fafc;
+}
 .bg-checkered {
   background-image:
     linear-gradient(45deg, #e5e7eb 25%, transparent 25%),

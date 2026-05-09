@@ -1,4 +1,4 @@
- import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Sprite } from '../types';
 
 // --- Type Definitions ---

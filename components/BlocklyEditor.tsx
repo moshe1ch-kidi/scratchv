@@ -5,10 +5,262 @@ import * as En from 'blockly/msg/en';
 import './BlocklyStyles.css';
 import { Page } from '../types';
 
+// --- Custom Field for Sound Recording ---
+class FieldSoundRecorder extends Blockly.Field {
+    public isSerializable() { return true; }
+    
+    private mediaRecorder: MediaRecorder | null = null;
+    private audioChunks: Blob[] = [];
+    private stream: MediaStream | null = null;
+    private audioContext: AudioContext | null = null;
+    private analyser: AnalyserNode | null = null;
+    private animationFrameId: number | null = null;
+
+    constructor(value: string) {
+        super(value);
+    }
+
+    /**
+     * @override
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    static fromJson(options: any) {
+        return new FieldSoundRecorder(options['value'] || '1');
+    }
+
+    getType() {
+        return 'field_sound_recorder';
+    }
+
+    getText() {
+        return `Recording ${(this as Blockly.Field).getValue()}`;
+    }
+
+    showEditor_() {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const B = Blockly as any;
+        if (!B.DropDownDiv) return;
+
+        B.DropDownDiv.hideWithoutAnimation();
+        B.DropDownDiv.clearContent();
+        const contentDiv = B.DropDownDiv.getContentDiv();
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'blocklySoundRecorder';
+        
+        const recordBtn = document.createElement('button');
+        recordBtn.className = 'blocklySoundRecorder-btn record';
+        recordBtn.innerHTML = '<i class="fas fa-microphone"></i> Record';
+
+        const canvas = document.createElement('canvas');
+        canvas.className = 'blocklySoundRecorder-canvas';
+        canvas.style.display = 'none';
+
+        const listDiv = document.createElement('div');
+        listDiv.className = 'blocklySoundRecorder-list';
+        
+        wrapper.appendChild(recordBtn);
+        wrapper.appendChild(canvas);
+        wrapper.appendChild(listDiv);
+        contentDiv.appendChild(wrapper);
+
+        const populateList = () => {
+            listDiv.innerHTML = '';
+            const recordings = this.getRecordings();
+            if (recordings.length === 0) {
+                 listDiv.innerHTML = '<div class="empty-list">No recordings. Click above to record!</div>';
+            }
+            recordings.forEach(rec => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.textContent = `Recording ${rec.id}`;
+                item.onclick = (e) => {
+                    e.stopPropagation();
+                    (this as Blockly.Field).setValue(rec.id);
+                    B.DropDownDiv.hideIfOwner(this);
+                };
+
+                const controls = document.createElement('div');
+                controls.className = 'item-controls';
+
+                const playBtn = document.createElement('button');
+                playBtn.innerHTML = '<i class="fas fa-play"></i>';
+                playBtn.onclick = (e) => { e.stopPropagation(); this.playRecording(rec.key); };
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (confirm(`Delete "Recording ${rec.id}"?`)) {
+                        localStorage.removeItem(rec.key);
+                        populateList();
+                    }
+                };
+
+                controls.appendChild(playBtn);
+                controls.appendChild(deleteBtn);
+                item.appendChild(controls);
+                listDiv.appendChild(item);
+            });
+        };
+
+        recordBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+                this.stopRecording();
+                recordBtn.innerHTML = '<i class="fas fa-microphone"></i> Record';
+                recordBtn.classList.remove('recording');
+                canvas.style.display = 'none';
+                setTimeout(populateList, 100);
+            } else {
+                this.startRecording(canvas);
+                recordBtn.innerHTML = '<i class="fas fa-stop"></i> Stop';
+                recordBtn.classList.add('recording');
+                canvas.style.display = 'block';
+            }
+        };
+
+        populateList();
+        B.DropDownDiv.setColour('#7ED321', '#7ED321');
+        B.DropDownDiv.showPositionedByField(this, () => {
+            this.stopRecording(); // ensure everything is stopped on close
+        });
+    }
+    
+    getRecordings() {
+        const recordings: {key: string, id: string}[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('recording_')) {
+                recordings.push({ key, id: key.replace('recording_', '') });
+            }
+        }
+        recordings.sort((a,b) => parseInt(a.id) - parseInt(b.id));
+        return recordings;
+    }
+    
+    async startRecording(canvas: HTMLCanvasElement) {
+        try {
+            this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.mediaRecorder = new MediaRecorder(this.stream);
+            this.audioChunks = [];
+            
+            this.mediaRecorder.addEventListener("dataavailable", event => {
+                this.audioChunks.push(event.data);
+            });
+            
+            this.mediaRecorder.start();
+            this.visualize(canvas);
+        } catch (err) {
+            console.error("Error accessing microphone:", err);
+            alert("Could not access microphone. Please check permissions.");
+        }
+    }
+    
+    stopRecording() {
+        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+            this.mediaRecorder.addEventListener("stop", () => {
+                const mimeType = this.mediaRecorder?.mimeType || 'audio/webm';
+                const audioBlob = new Blob(this.audioChunks, { type: mimeType });
+                
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = () => {
+                    const base64data = reader.result as string;
+                    this.saveRecording(base64data);
+                };
+            });
+            this.mediaRecorder.stop();
+        }
+        
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+            this.stream = null;
+        }
+
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+        if (this.audioContext) {
+            this.audioContext.close();
+            this.audioContext = null;
+        }
+    }
+
+    saveRecording(base64data: string) {
+        const recordings = this.getRecordings();
+        const nextId = recordings.length > 0 ? Math.max(...recordings.map(r => parseInt(r.id))) + 1 : 1;
+        localStorage.setItem(`recording_${nextId}`, base64data);
+    }
+    
+    playRecording(key: string) {
+        const base64Audio = localStorage.getItem(key);
+        if (base64Audio) {
+            try {
+                const audio = new Audio(base64Audio);
+                audio.play();
+            } catch (e) {
+                console.error("Error playing recording", e);
+            }
+        }
+    }
+
+    visualize(canvas: HTMLCanvasElement) {
+        if (!this.stream) return;
+        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        this.analyser = this.audioContext.createAnalyser();
+        const source = this.audioContext.createMediaStreamSource(this.stream);
+        source.connect(this.analyser);
+        
+        this.analyser.fftSize = 256;
+        const bufferLength = this.analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        const canvasCtx = canvas.getContext('2d');
+        if (!canvasCtx) return;
+
+        const draw = () => {
+            if (!this.analyser) return;
+            this.animationFrameId = requestAnimationFrame(draw);
+            this.analyser.getByteTimeDomainData(dataArray);
+
+            canvasCtx.fillStyle = '#f8fafc';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+            canvasCtx.lineWidth = 2;
+            canvasCtx.strokeStyle = '#7ED321';
+            canvasCtx.beginPath();
+            
+            const sliceWidth = canvas.width * 1.0 / bufferLength;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * canvas.height / 2;
+                if (i === 0) {
+                    canvasCtx.moveTo(x, y);
+                } else {
+                    canvasCtx.lineTo(x, y);
+                }
+                x += sliceWidth;
+            }
+
+            canvasCtx.lineTo(canvas.width, canvas.height / 2);
+            canvasCtx.stroke();
+        };
+        draw();
+    }
+}
+
 // Initialize locale
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const locale = (En as any).default || En;
 Blockly.setLocale(locale);
+
+// Register custom field immediately
+if (!Blockly.registry.hasItem(Blockly.registry.Type.FIELD, 'field_sound_recorder')) {
+    Blockly.registry.register(Blockly.registry.Type.FIELD, 'field_sound_recorder', FieldSoundRecorder);
+}
 
 // --- Generator Import Compatibility ---
 const getJavascriptGenerator = () => {
@@ -167,257 +419,6 @@ class Number99Field extends Blockly.FieldNumber {
     }
 }
 
-
-// --- Custom Field for Sound Recording ---
-class FieldSoundRecorder extends Blockly.Field {
-    public isSerializable() { return true; }
-    
-    private mediaRecorder: MediaRecorder | null = null;
-    private audioChunks: Blob[] = [];
-    private stream: MediaStream | null = null;
-    private audioContext: AudioContext | null = null;
-    private analyser: AnalyserNode | null = null;
-    private animationFrameId: number | null = null;
-
-    constructor(value: string) {
-        super(value);
-    }
-
-    /**
-     * @override
-     */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    static fromJson(options: any) {
-        return new this(options['value']);
-    }
-
-    getText() {
-        return `Recording ${(this as Blockly.Field).getValue()}`;
-    }
-
-    showEditor_() {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const B = Blockly as any;
-        if (!B.DropDownDiv) return;
-
-        B.DropDownDiv.hideWithoutAnimation();
-        B.DropDownDiv.clearContent();
-        const contentDiv = B.DropDownDiv.getContentDiv();
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'blocklySoundRecorder';
-        
-        const recordBtn = document.createElement('button');
-        recordBtn.className = 'blocklySoundRecorder-btn record';
-        recordBtn.innerHTML = '<i class="fas fa-microphone"></i> Record';
-
-        const canvas = document.createElement('canvas');
-        canvas.className = 'blocklySoundRecorder-canvas';
-        canvas.style.display = 'none';
-
-        const listDiv = document.createElement('div');
-        listDiv.className = 'blocklySoundRecorder-list';
-        
-        wrapper.appendChild(recordBtn);
-        wrapper.appendChild(canvas);
-        wrapper.appendChild(listDiv);
-        contentDiv.appendChild(wrapper);
-
-        const populateList = () => {
-            listDiv.innerHTML = '';
-            const recordings = this.getRecordings();
-            if (recordings.length === 0) {
-                 listDiv.innerHTML = '<div class="empty-list">No recordings. Click above to record!</div>';
-            }
-            recordings.forEach(rec => {
-                const item = document.createElement('div');
-                item.className = 'list-item';
-                item.textContent = `Recording ${rec.id}`;
-                item.onclick = (e) => {
-                    e.stopPropagation();
-                    (this as Blockly.Field).setValue(rec.id);
-                    B.DropDownDiv.hideIfOwner(this);
-                };
-
-                const controls = document.createElement('div');
-                controls.className = 'item-controls';
-
-                const playBtn = document.createElement('button');
-                playBtn.innerHTML = '<i class="fas fa-play"></i>';
-                playBtn.onclick = (e) => { e.stopPropagation(); this.playRecording(rec.key); };
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-                deleteBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    if (confirm(`Delete "Recording ${rec.id}"?`)) {
-                        localStorage.removeItem(rec.key);
-                        populateList();
-                    }
-                };
-
-                controls.appendChild(playBtn);
-                controls.appendChild(deleteBtn);
-                item.appendChild(controls);
-                listDiv.appendChild(item);
-            });
-        };
-
-        recordBtn.onclick = (e) => {
-            e.stopPropagation();
-            if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
-                this.stopRecording();
-                recordBtn.innerHTML = '<i class="fas fa-microphone"></i> Record';
-                recordBtn.classList.remove('recording');
-                canvas.style.display = 'none';
-                setTimeout(populateList, 100);
-            } else {
-                this.startRecording(canvas);
-                recordBtn.innerHTML = '<i class="fas fa-stop"></i> Stop';
-                recordBtn.classList.add('recording');
-                canvas.style.display = 'block';
-            }
-        };
-
-        populateList();
-        B.DropDownDiv.setColour('#7ED321', '#7ED321');
-        B.DropDownDiv.showPositionedByField(this, () => {
-            this.stopRecording(); // ensure everything is stopped on close
-        });
-    }
-    
-    getRecordings() {
-        const recordings: {key: string, id: string}[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('recording_')) {
-                recordings.push({ key, id: key.replace('recording_', '') });
-            }
-        }
-        recordings.sort((a,b) => parseInt(a.id) - parseInt(b.id));
-        return recordings;
-    }
-    
-    async startRecording(canvas: HTMLCanvasElement) {
-        try {
-            this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            this.mediaRecorder = new MediaRecorder(this.stream);
-            this.audioChunks = [];
-            
-            this.mediaRecorder.addEventListener("dataavailable", event => {
-                this.audioChunks.push(event.data);
-            });
-            
-            this.mediaRecorder.start();
-            this.visualize(canvas);
-        } catch (err) {
-            console.error("Error accessing microphone:", err);
-            alert("Could not access microphone. Please check permissions.");
-        }
-    }
-    
-    stopRecording() {
-        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
-            this.mediaRecorder.addEventListener("stop", () => {
-                // FIX: Capture the correct MIME type from the recorder
-                const mimeType = this.mediaRecorder?.mimeType || 'audio/webm';
-                // FIX: Create blob with explicit type to ensure playback compatibility
-                const audioBlob = new Blob(this.audioChunks, { type: mimeType });
-                
-                const reader = new FileReader();
-                reader.readAsDataURL(audioBlob);
-                reader.onloadend = () => {
-                    const base64data = reader.result as string;
-                    this.saveRecording(base64data);
-                };
-            });
-            this.mediaRecorder.stop();
-        }
-        
-        if (this.stream) {
-            this.stream.getTracks().forEach(track => track.stop());
-            this.stream = null;
-        }
-
-        if (this.animationFrameId) {
-            cancelAnimationFrame(this.animationFrameId);
-            this.animationFrameId = null;
-        }
-        if (this.audioContext) {
-            this.audioContext.close();
-            this.audioContext = null;
-        }
-    }
-
-    saveRecording(base64data: string) {
-        const recordings = this.getRecordings();
-        const nextId = recordings.length > 0 ? Math.max(...recordings.map(r => parseInt(r.id))) + 1 : 1;
-        localStorage.setItem(`recording_${nextId}`, base64data);
-    }
-    
-    playRecording(key: string) {
-        const base64Audio = localStorage.getItem(key);
-        if (base64Audio) {
-            try {
-                const audio = new Audio(base64Audio);
-                audio.play();
-            } catch (e) {
-                console.error("Error playing recording", e);
-            }
-        }
-    }
-
-    visualize(canvas: HTMLCanvasElement) {
-        if (!this.stream) return;
-        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        this.analyser = this.audioContext.createAnalyser();
-        const source = this.audioContext.createMediaStreamSource(this.stream);
-        source.connect(this.analyser);
-        
-        this.analyser.fftSize = 256;
-        const bufferLength = this.analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        
-        const canvasCtx = canvas.getContext('2d');
-        if (!canvasCtx) return;
-
-        const draw = () => {
-            if (!this.analyser) return;
-            this.animationFrameId = requestAnimationFrame(draw);
-            this.analyser.getByteTimeDomainData(dataArray);
-
-            canvasCtx.fillStyle = '#f8fafc';
-            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-            canvasCtx.lineWidth = 2;
-            canvasCtx.strokeStyle = '#7ED321';
-            canvasCtx.beginPath();
-            
-            const sliceWidth = canvas.width * 1.0 / bufferLength;
-            let x = 0;
-
-            for (let i = 0; i < bufferLength; i++) {
-                const v = dataArray[i] / 128.0;
-                const y = v * canvas.height / 2;
-                if (i === 0) {
-                    canvasCtx.moveTo(x, y);
-                } else {
-                    canvasCtx.lineTo(x, y);
-                }
-                x += sliceWidth;
-            }
-
-            canvasCtx.lineTo(canvas.width, canvas.height / 2);
-            canvasCtx.stroke();
-        };
-        draw();
-    }
-}
-
-// Check if already registered to avoid errors on hot reload
-if (!Blockly.registry.getClass(Blockly.registry.Type.FIELD, 'field_sound_recorder')) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Blockly.fieldRegistry.register('field_sound_recorder', FieldSoundRecorder as any);
-}
 
 // --- Icons (Base64 encoded SVGs) ---
 const ICONS = {

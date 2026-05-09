@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+ import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Sprite } from '../types';
 
 // --- Type Definitions ---
@@ -264,29 +264,23 @@ const parseSvgString = (svgText: string): Shape[] => {
         return [];
     }
     
-    // Check for viewBox to adjust initial translation
-    const viewBoxAttr = svgNode.getAttribute('viewBox');
-    let vbX = 0, vbY = 0;
-    if (viewBoxAttr) {
-        const parts = viewBoxAttr.split(/[\s,]+/).map(parseFloat);
-        if (parts.length === 4 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-            vbX = parts[0];
-            vbY = parts[1];
-        }
-    }
-
     const finalShapes: Shape[] = [];
 
-    const traverse = (node: Element, parentTransform: { tx: number; ty: number }) => {
-        const nodeTransform = parseTransform(node.getAttribute('transform'));
-        const currentTransform = {
-            tx: parentTransform.tx + nodeTransform.tx,
-            ty: parentTransform.ty + nodeTransform.ty,
-        };
-
+    const traverse = (node: Element, parentTransform: string) => {
         for (const child of Array.from(node.children)) {
-            // Ignore the background rect we create in handleSave
-            if (child.tagName.toLowerCase() === 'rect' && child.id === 'canvas-background') {
+            const tagName = child.tagName.toLowerCase();
+            
+            // Ignore the background rect
+            if (tagName === 'rect' && child.id === 'canvas-background') {
+                continue;
+            }
+
+            // Accumulate hierarchy transform
+            const ownTransform = child.getAttribute('transform') || '';
+            const combinedTransform = (parentTransform + ' ' + ownTransform).trim();
+
+            if (tagName === 'g') {
+                traverse(child, combinedTransform);
                 continue;
             }
 
@@ -296,34 +290,10 @@ const parseSvgString = (svgText: string): Shape[] => {
             const stroke = child.getAttribute('stroke') || el.style?.stroke || 'none';
             const sWidth = child.getAttribute('stroke-width') || el.style?.strokeWidth || '0';
             const strokeWidth = parseFloat(sWidth);
-            const ownTransform = child.getAttribute('transform') || '';
-            const ownT = parseTransform(ownTransform);
-            
-            // Apply SVG viewBox offset as a baseline translation for all root-level elements
-            let baseTx = currentTransform.tx;
-            let baseTy = currentTransform.ty;
-            
-            // If this is a direct child of the SVG root and we have a non-zero viewBox offset,
-            // we should account for it if the coordinates are in the viewBox coordinate system.
-            // However, our code already saves shapes with absolute coordinates relative to their own transform.
-            // The safest is to let the centering effect handle the alignment, 
-            // but we MUST parse the transforms accurately.
-
-            const finalTx = baseTx + ownT.tx;
-            const finalTy = baseTy + ownT.ty;
-            const otherTransforms = ownTransform.replace(/translate\s*\([^)]*\)/g, '').trim();
-            
-            let combinedTransform = '';
-            if (finalTx !== 0 || finalTy !== 0) {
-                combinedTransform = `translate(${finalTx.toFixed(2)}, ${finalTy.toFixed(2)})`;
-            }
-            if (otherTransforms) {
-                combinedTransform = (combinedTransform + ' ' + otherTransforms).trim();
-            }
 
             let shape: Shape | null = null;
             
-            switch (child.tagName.toLowerCase()) {
+            switch (tagName) {
                 case 'rect':
                     shape = {
                         id, type: 'rect',
@@ -366,9 +336,26 @@ const parseSvgString = (svgText: string): Shape[] => {
                         fill, stroke, strokeWidth
                     };
                     break;
-                case 'g':
-                    traverse(child, currentTransform);
+                case 'polygon':
+                case 'polyline': {
+                    const pointsAttr = child.getAttribute('points') || '';
+                    const coords = pointsAttr.trim().split(/[\s,]+/).map(parseFloat);
+                    if (coords.length >= 4) {
+                        let d = `M${coords[0]},${coords[1]}`;
+                        for (let i = 2; i < coords.length; i += 2) {
+                            if (!isNaN(coords[i]) && !isNaN(coords[i+1])) {
+                                d += ` L${coords[i]},${coords[i+1]}`;
+                            }
+                        }
+                        if (tagName === 'polygon') d += ' Z';
+                        shape = {
+                            id, type: 'path',
+                            d, transform: combinedTransform || undefined,
+                            fill, stroke, strokeWidth
+                        };
+                    }
                     break;
+                }
             }
             if (shape) {
                 finalShapes.push(shape);
@@ -376,7 +363,7 @@ const parseSvgString = (svgText: string): Shape[] => {
         }
     };
     
-    traverse(svgNode, { tx: 0, ty: 0 });
+    traverse(svgNode, '');
     return finalShapes;
 };
 
@@ -493,100 +480,79 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
 
   useEffect(() => {
     if (isInitialLoadRef.current && shapes.length > 0) {
-        let totalBBox = { x: Infinity, y: Infinity, x2: -Infinity, y2: -Infinity };
-        let hasContent = false;
+        // Wait for one render cycle to ensure DOM elements exist for accurate bounding box calculation
+        const timer = setTimeout(() => {
+            const svgEl = document.querySelector('.paint-canvas-container svg');
+            if (!svgEl) return;
+            const svgRect = svgEl.getBoundingClientRect();
 
-        shapes.forEach(shape => {
-            const b = getBoundingBox(shape);
-            if (b.width > 0 || b.height > 0) {
-                hasContent = true;
-                const strokeOffset = (shape.strokeWidth || 0) / 2;
-                totalBBox.x = Math.min(totalBBox.x, b.x - strokeOffset);
-                totalBBox.y = Math.min(totalBBox.y, b.y - strokeOffset);
-                totalBBox.x2 = Math.max(totalBBox.x2, b.x + b.width + strokeOffset);
-                totalBBox.y2 = Math.max(totalBBox.y2, b.y + b.height + strokeOffset);
-            }
-        });
+            let totalBBox = { x: Infinity, y: Infinity, x2: -Infinity, y2: -Infinity };
+            let hasContent = false;
 
-        if (hasContent) {
-            const bboxWidth = totalBBox.x2 - totalBBox.x;
-            const bboxHeight = totalBBox.y2 - totalBBox.y;
-            const bboxCenterX = totalBBox.x + bboxWidth / 2;
-            const bboxCenterY = totalBBox.y + bboxHeight / 2;
-
-            const canvasWidth = 480;
-            const canvasHeight = 420;
-            const canvasCenterX = canvasWidth / 2;
-            const canvasCenterY = canvasHeight / 2;
-
-            // Heuristic for "Needs alignment":
-            // 1. Off-center significantly
-            // 2. Too big for canvas
-            // 3. Or it's a raw SVG from library (usually has coordinates around 0,0)
-            const distFromCenter = Math.sqrt(Math.pow(bboxCenterX - canvasCenterX, 2) + Math.pow(bboxCenterY - canvasCenterY, 2));
-            const isOffCenter = distFromCenter > 20;
-            const isTooLarge = bboxWidth > canvasWidth * 0.9 || bboxHeight > canvasHeight * 0.9;
-            const isTooSmall = bboxWidth < canvasWidth * 0.3 && bboxHeight < canvasHeight * 0.3;
-
-            if (isOffCenter || isTooLarge || isTooSmall) {
-                const padding = 60;
-                const availableWidth = canvasWidth - padding * 2;
-                const availableHeight = canvasHeight - padding * 2;
-
-                let scale = 1;
-                if (bboxWidth > 0 && bboxHeight > 0) {
-                    const scaleX = availableWidth / bboxWidth;
-                    const scaleY = availableHeight / bboxHeight;
-                    scale = Math.min(scaleX, scaleY);
-                    
-                    // Cap auto-scaling: don't make it tiny drawings fill the screen unless they are library sprites
-                    if (!isTooLarge && scale > 1.2) {
-                        // Only scale up if it's really tiny or if we want it to be a decent size
-                        scale = Math.min(scale, 1.2); 
+            shapes.forEach(shape => {
+                const el = document.getElementById(shape.id);
+                if (el) {
+                    const rect = el.getBoundingClientRect();
+                    if (rect.width > 0 || rect.height > 0) {
+                        hasContent = true;
+                        const relX = rect.left - svgRect.left;
+                        const relY = rect.top - svgRect.top;
+                        totalBBox.x = Math.min(totalBBox.x, relX);
+                        totalBBox.y = Math.min(totalBBox.y, relY);
+                        totalBBox.x2 = Math.max(totalBBox.x2, relX + rect.width);
+                        totalBBox.y2 = Math.max(totalBBox.y2, relY + rect.height);
                     }
                 }
+            });
 
-                // If scale is near 1 and we only need centering
-                if (Math.abs(scale - 1) < 0.05 && isOffCenter) {
-                    scale = 1;
-                }
+            if (hasContent) {
+                const bboxWidth = totalBBox.x2 - totalBBox.x;
+                const bboxHeight = totalBBox.y2 - totalBBox.y;
+                const bboxCenterX = totalBBox.x + bboxWidth / 2;
+                const bboxCenterY = totalBBox.y + bboxHeight / 2;
 
-                setShapes(prevShapes => prevShapes.map(s => {
-                    const newShape = { ...s };
-                    const transform = newShape.transform || '';
-                    const t = parseTransform(transform);
-                    
-                    // Map coordinate tx to new coordinate based on scaling around bbox center
-                    // P' = canvasCenter + (P - bboxCenter) * scale
-                    const newTx = canvasCenterX + (t.tx - bboxCenterX) * scale;
-                    const newTy = canvasCenterY + (t.ty - bboxCenterY) * scale;
-                    
-                    const scaleRegex = /scale\(([^)]+)\)/;
-                    const translateRegex = /translate\s*\(\s*([0-9-.]+)\s*[, ]*\s*([0-9-.]+)?\s*\)/;
-                    
-                    let currentS = 1;
-                    const sMatch = transform.match(scaleRegex);
-                    if (sMatch) currentS = parseFloat(sMatch[1]);
-                    
-                    const finalScale = currentS * scale;
-                    
-                    let newTransform = transform;
-                    if (sMatch) newTransform = newTransform.replace(scaleRegex, `scale(${finalScale.toFixed(4)})`);
-                    else newTransform = `${newTransform} scale(${finalScale.toFixed(4)})`.trim();
-                    
-                    if (newTransform.match(translateRegex)) {
-                        newTransform = newTransform.replace(translateRegex, `translate(${newTx.toFixed(2)}, ${newTy.toFixed(2)})`);
-                    } else {
-                        newTransform = `translate(${newTx.toFixed(2)}, ${newTy.toFixed(2)}) ${newTransform}`.trim();
+                const canvasWidth = 480;
+                const canvasHeight = 420;
+                const canvasCenterX = canvasWidth / 2;
+                const canvasCenterY = canvasHeight / 2;
+
+                const distFromCenter = Math.sqrt(Math.pow(bboxCenterX - canvasCenterX, 2) + Math.pow(bboxCenterY - canvasCenterY, 2));
+                const isOffCenter = distFromCenter > 20;
+                const isTooLarge = bboxWidth > canvasWidth * 0.95 || bboxHeight > canvasHeight * 0.95;
+                const isTooSmall = bboxWidth < canvasWidth * 0.1 && bboxHeight < canvasHeight * 0.1;
+
+                if (isOffCenter || isTooLarge || isTooSmall) {
+                    const padding = 60;
+                    const availableWidth = canvasWidth - padding * 2;
+                    const availableHeight = canvasHeight - padding * 2;
+
+                    let scale = 1;
+                    if (bboxWidth > 0 && bboxHeight > 0) {
+                        const scaleX = availableWidth / bboxWidth;
+                        const scaleY = availableHeight / bboxHeight;
+                        scale = Math.min(scaleX, scaleY);
+                        if (!isTooLarge && scale > 1.2) scale = 1.2;
                     }
-                    
-                    newShape.transform = newTransform.replace(/\s+/g, ' ').trim();
-                    newShape.strokeWidth = (newShape.strokeWidth || 0) * scale;
-                    return newShape;
-                }));
+
+                    if (Math.abs(scale - 1) < 0.05 && isOffCenter) scale = 1;
+
+                    // Apply a UNIFORM group transform to all shapes to preserve relative positions perfectly
+                    setShapes(prevShapes => prevShapes.map(s => {
+                        const newShape = { ...s };
+                        const transform = newShape.transform || '';
+                        
+                        // Combined: translate to canvas center, then scale, then move back relative to drawing center
+                        const extraTransform = `translate(${canvasCenterX.toFixed(2)}, ${canvasCenterY.toFixed(2)}) scale(${scale.toFixed(4)}) translate(${-bboxCenterX.toFixed(2)}, ${-bboxCenterY.toFixed(2)})`;
+                        newShape.transform = `${extraTransform} ${transform}`.trim();
+                        newShape.strokeWidth = (newShape.strokeWidth || 0) * scale;
+                        return newShape;
+                    }));
+                }
             }
-        }
-        isInitialLoadRef.current = false;
+            isInitialLoadRef.current = false;
+        }, 100);
+
+        return () => clearTimeout(timer);
     }
   }, [shapes]);
 
@@ -991,13 +957,16 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     setShapes(prevShapes => prevShapes.map(s => {
         if (s.id !== selectedShapeId) return s;                
         const newShape = { ...s };
+        
+        // Account for current translation in rotation center
         const bbox = getBoundingBox(newShape);
-        const cx = bbox.x + bbox.width / 2;
-        const cy = bbox.y + bbox.height / 2;
+        const t = parseTransform(newShape.transform);
+        const cx = bbox.x + t.tx + bbox.width / 2;
+        const cy = bbox.y + t.ty + bbox.height / 2;
         
         const transform = newShape.transform || '';
-        // Rotate 20 degrees cumulatively
-        newShape.transform = `rotate(20, ${cx}, ${cy}) ${transform}`.trim();
+        // Rotate 15 degrees cumulatively around the actual current center
+        newShape.transform = `rotate(15, ${cx.toFixed(2)}, ${cy.toFixed(2)}) ${transform}`.trim();
 
         return newShape;
     }));

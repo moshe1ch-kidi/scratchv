@@ -257,10 +257,24 @@ class FieldSoundRecorder extends Blockly.Field {
 const locale = (En as any).default || En;
 Blockly.setLocale(locale);
 
-// Register custom field immediately
-if (!Blockly.registry.hasItem(Blockly.registry.Type.FIELD, 'field_sound_recorder')) {
-    Blockly.registry.register(Blockly.registry.Type.FIELD, 'field_sound_recorder', FieldSoundRecorder);
-}
+// Register custom field immediately and robustly
+const registerField = () => {
+    const type = Blockly.registry.Type.FIELD;
+    const name = 'field_sound_recorder';
+    if (!Blockly.registry.hasItem(type, name)) {
+        Blockly.registry.register(type, name, FieldSoundRecorder);
+    }
+    // Also register on fieldRegistry for compatibility with different Blockly loading styles
+    if (!(Blockly as any).fieldRegistry?.getClass?.(name)) {
+        try {
+            (Blockly as any).fieldRegistry?.register(name, FieldSoundRecorder);
+        } catch (e) {
+            // Field registry might be deprecated or handled differently in this version
+        }
+    }
+};
+
+registerField();
 
 // --- Generator Import Compatibility ---
 const getJavascriptGenerator = () => {

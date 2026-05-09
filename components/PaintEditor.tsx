@@ -47,8 +47,17 @@ interface TriangleShape extends ShapeBase {
   height: number;
 }
 
-type Shape = RectShape | CircleShape | LineShape | PathShape | TriangleShape;
-type Tool = 'select' | 'rect' | 'circle' | 'line' | 'freehand' | 'triangle';
+interface TextShape extends ShapeBase {
+  type: 'text';
+  x: number;
+  y: number;
+  text: string;
+  fontSize: number;
+  fontFamily: string;
+}
+
+type Shape = RectShape | CircleShape | LineShape | PathShape | TriangleShape | TextShape;
+type Tool = 'select' | 'rect' | 'circle' | 'line' | 'freehand' | 'triangle' | 'text';
 
 
 // --- Shape Data for Gallery ---
@@ -119,31 +128,39 @@ const ToolButton: React.FC<{ icon: string, label: string, title?: string, active
       onClick={onClick}
       disabled={disabled}
       title={title || label}
-      className={`w-16 h-16 flex flex-col items-center justify-center rounded-lg transition-all duration-150 relative border-2
-        ${active ? 'bg-blue-500 text-white shadow-inner border-blue-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-transparent'}
+      className={`w-14 h-14 flex flex-col items-center justify-center rounded-2xl transition-all duration-150 relative border-2
+        ${active ? 'bg-blue-600 text-white shadow-lg border-blue-700' : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-100 shadow-sm'}
         ${disabled ? 'opacity-40 cursor-not-allowed' : ''}
+        hover:scale-110 active:scale-95
       `}
     >
       <i className={`fas ${icon} text-2xl ${!active && !disabled ? iconColor : ''}`}></i>
-      <span className="text-xs mt-1">{label}</span>
     </button>
 );
 
-const TopToolButton: React.FC<{ icon: string, title: string, onClick: () => void, disabled?: boolean, iconColor?: string }> = 
-  ({ icon, title, onClick, disabled, iconColor }) => (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={`w-10 h-10 flex items-center justify-center rounded-md transition-all duration-150
-        ${disabled 
-          ? 'bg-slate-100 text-slate-300 cursor-not-allowed' 
-          : 'bg-white hover:bg-slate-200 text-slate-600 border border-slate-300'
-        }
-      `}
-    >
-      <i className={`fas ${icon} text-lg ${!disabled ? iconColor : ''}`}></i>
-    </button>
+const TopToolButton: React.FC<{ 
+  icon: string, 
+  title: string, 
+  onClick: () => void, 
+  disabled?: boolean, 
+  iconColor?: string,
+  label?: string
+}> = ({ icon, title, onClick, disabled, iconColor, label }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    title={title}
+    className={`group flex flex-col items-center justify-center p-1.5 rounded-xl transition-all duration-200
+      ${disabled 
+        ? 'opacity-30 cursor-not-allowed' 
+        : 'hover:bg-blue-50 active:scale-95 text-slate-600'
+      }
+    `}
+  >
+    <div className={`w-11 h-11 flex items-center justify-center rounded-2xl bg-white border-2 border-slate-100 shadow-sm group-hover:border-blue-400 group-hover:shadow-md transition-all ${disabled ? '' : iconColor}`}>
+       <i className={`fas ${icon} text-lg`}></i>
+    </div>
+  </button>
 );
 
 const Separator: React.FC = () => <div className="w-px h-8 bg-slate-300 mx-1"></div>;
@@ -151,19 +168,23 @@ const Separator: React.FC = () => <div className="w-px h-8 bg-slate-300 mx-1"></
 
 const ColorSwatch: React.FC<{ color: string, active?: boolean, onClick: () => void }> = 
   ({ color, active, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`w-7 h-7 rounded-full transition-transform hover:scale-110
-      ${active ? 'ring-2 ring-offset-2 ring-blue-500 ring-offset-white' : ''}
-    `}
-    style={{ 
-        backgroundColor: color, 
-        border: (color.toUpperCase() === '#FFFFFF' || color === 'transparent') ? '1px solid #e2e8f0' : 'none',
-        backgroundImage: color === 'transparent' ? 'repeating-conic-gradient(#e2e8f0 0% 25%, transparent 0% 50%, #e2e8f0 50% 75%, transparent 75%)' : 'none',
-        backgroundSize: '10px 10px'
-    }}
-  />
-);
+    <button 
+      onClick={onClick}
+      className={`w-5 h-5 rounded-full border transition-all transform hover:scale-125 active:scale-95 shadow-sm relative overflow-hidden
+        ${active ? 'border-indigo-600 ring-2 ring-indigo-300 ring-offset-1 scale-125 z-10' : 'border-slate-200 hover:border-slate-400'}
+        ${color === 'transparent' ? 'bg-white' : ''}
+      `}
+      style={color !== 'transparent' ? { backgroundColor: color } : {}}
+      title={color === 'transparent' ? 'None' : color}
+    >
+      {color === 'transparent' && (
+        <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full text-red-500 opacity-50">
+            <line x1="0" y1="100" x2="100" y2="0" stroke="currentColor" strokeWidth="10" />
+            <line x1="0" y1="0" x2="100" y2="100" stroke="currentColor" strokeWidth="10" />
+        </svg>
+      )}
+    </button>
+  );
 
 const ColorPickerTarget: React.FC<{
     type: 'fill' | 'stroke';
@@ -193,9 +214,15 @@ const ColorPickerTarget: React.FC<{
 };
 
 const COLORS = [
-  'transparent', '#000000', '#FFFFFF', '#EF4444', '#F97316', '#F59E0B', '#EAB308', 
-  '#84CC16', '#22C55E', '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9',
-  '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899'
+  'transparent', '#000000', '#475569', '#94a3b8', '#cbd5e1', '#FFFFFF',
+  '#ef4444', '#dc2626', '#b91c1c', '#f97316', '#ea580c', '#c2410c',
+  '#f59e0b', '#d97706', '#b45309', '#facc15', '#eab308', '#ca8a04',
+  '#84cc16', '#65a30d', '#4d7c0f', '#22c55e', '#16a34a', '#15803d',
+  '#10b981', '#059669', '#047857', '#14b8a6', '#0d9488', '#0f766e',
+  '#06b6d4', '#0891b2', '#0e7490', '#0ea5e9', '#0284c7', '#0369a1',
+  '#3b82f6', '#2563eb', '#1d4ed8', '#6366f1', '#4f46e5', '#4338ca',
+  '#8b5cf6', '#7c3aed', '#6d28d9', '#a855f7', '#9333ea', '#7e22ce',
+  '#d946ef', '#c026d3', '#a21caf', '#ec4899', '#db2777', '#be185d'
 ];
 
 // --- Shape Gallery Component ---
@@ -390,6 +417,8 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
   const [isShapeGalleryOpen, setIsShapeGalleryOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
+  const [showGrid, setShowGrid] = useState(false);
+
   const svgRef = useRef<SVGSVGElement>(null);
   const startPointRef = useRef<{x: number, y: number} | null>(null);
   const shapeRefs = useRef<Record<string, SVGElement | null>>({});
@@ -400,6 +429,39 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
   const historyRef = useRef<{ undo: Shape[][], redo: Shape[][] }>({ undo: [], redo: [] });
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
 
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        // Prevent shortcuts if user is typing in a prompt or if a modal is open
+        if (isShapeGalleryOpen) return;
+        
+        const isCtrl = e.ctrlKey || e.metaKey;
+        
+        if (isCtrl && e.key === 'z') {
+            e.preventDefault();
+            handleUndo();
+        } else if (isCtrl && e.key === 'y') {
+            e.preventDefault();
+            handleRedo();
+        } else if (e.key === 'Delete' || e.key === 'Backspace') {
+            handleDelete();
+        } else if (!isCtrl) {
+            switch (e.key.toLowerCase()) {
+                case 'v': setActiveTool('select'); break;
+                case 'r': setActiveTool('rect'); break;
+                case 'c': setActiveTool('circle'); break;
+                case 'l': setActiveTool('line'); break;
+                case 't': setActiveTool('text'); break;
+                case 'f': setActiveTool('freehand'); break;
+                case 'p': setActiveTool('freehand'); break; // Pencil
+                case 'w': setActiveTool('triangle'); break;
+            }
+        }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [shapes, selectedShapeId, activeTool, historyState, isShapeGalleryOpen]);
 
   const pushToHistory = (shapesToPush: Shape[]) => {
     historyRef.current.undo.push(shapesToPush);
@@ -636,6 +698,24 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
         case 'freehand':
             newShape = { id: `s-${Date.now()}`, type: 'path', d: `M${pos.x} ${pos.y}`, fill: 'none', stroke: strokeColor, strokeWidth: strokeWidth };
             break;
+        case 'text': {
+            const text = prompt("Enter text:");
+            if (text) {
+                newShape = { 
+                    id: `s-${Date.now()}`, 
+                    type: 'text', 
+                    x: pos.x, 
+                    y: pos.y, 
+                    text, 
+                    fontSize: strokeWidth * 5, 
+                    fontFamily: 'Arial',
+                    fill: fillColor,
+                    stroke: 'none',
+                    strokeWidth: 0
+                };
+            }
+            break;
+        }
     }
     setDrawingShape(newShape);
   };
@@ -712,6 +792,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
       else if (drawingShape.type === 'circle') isValid = drawingShape.rx > 2 || drawingShape.ry > 2;
       else if (drawingShape.type === 'line') isValid = Math.abs(drawingShape.x1 - drawingShape.x2) > 2 || Math.abs(drawingShape.y1 - drawingShape.y2) > 2;
       else if (drawingShape.type === 'path') isValid = drawingShape.d.includes('L');
+      else if (drawingShape.type === 'text') isValid = drawingShape.text.length > 0;
       
       if (isValid) {
          setShapes(prev => [...prev, drawingShape]);
@@ -729,6 +810,15 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     startPointRef.current = null;
   };
   
+  const handleClearAll = () => {
+    if (shapes.length === 0) return;
+    if (confirm("Are you sure you want to clear the entire canvas?")) {
+        pushToHistory(shapes);
+        setShapes([]);
+        setSelectedShapeId(null);
+    }
+  };
+
   const handleSave = () => {
     // Calculate the total bounding box
     let totalBBox = { x: Infinity, y: Infinity, x2: -Infinity, y2: -Infinity };
@@ -787,6 +877,8 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
                 return `<line x1="${shape.x1}" y1="${shape.y1}" x2="${shape.x2}" y2="${shape.y2}" ${attrs} stroke-linecap="round" ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
             case 'path':
                 return `<path d="${shape.d}" transform="${shape.transform || ''}" ${attrs} stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />`;
+            case 'text':
+                return `<text x="${shape.x}" y="${shape.y}" font-size="${shape.fontSize}" font-family="${shape.fontFamily}" fill="${shape.fill}" transform="${shape.transform || ''}">${shape.text}</text>`;
             default:
                 return '';
         }
@@ -840,25 +932,28 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
       if (!selectedShapeId) return;
       pushToHistory(shapes);
       setShapes(shapes.map(s => {
-          if (s.id === selectedShapeId && (s.type === 'rect' || s.type === 'triangle' || s.type === 'circle' || s.type === 'path')) {
+          if (s.id === selectedShapeId && (s.type === 'rect' || s.type === 'triangle' || s.type === 'circle' || s.type === 'path' || s.type === 'text')) {
               return { ...s, fill: s.fill === 'transparent' ? fillColor : 'transparent' };
           }
           return s;
       }));
   };
 
-  const handleMoveLayer = (direction: 'forward' | 'backward') => {
+  const handleMoveLayer = (direction: 'forward' | 'backward' | 'front' | 'back') => {
     if (!selectedShapeId) return;
     pushToHistory(shapes);
     const index = shapes.findIndex(s => s.id === selectedShapeId);
     if (index === -1) return;
 
-    if (direction === 'backward' && index === 0) return;
-    if (direction === 'forward' && index === shapes.length - 1) return;
-
     const newShapes = [...shapes];
     const [shape] = newShapes.splice(index, 1);
-    const newIndex = direction === 'forward' ? index + 1 : index - 1;
+    
+    let newIndex = index;
+    if (direction === 'forward') newIndex = Math.min(shapes.length - 1, index + 1);
+    else if (direction === 'backward') newIndex = Math.max(0, index - 1);
+    else if (direction === 'front') newIndex = shapes.length - 1;
+    else if (direction === 'back') newIndex = 0;
+
     newShapes.splice(newIndex, 0, shape);
     setShapes(newShapes);
   };
@@ -872,7 +967,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
         if (selectedShapeId) {
             setShapes(prev => prev.map(s => {
                 if (s.id !== selectedShapeId) return s;
-                if (s.type === 'rect' || s.type === 'triangle' || s.type === 'circle' || s.type === 'path') {
+                if (s.type === 'rect' || s.type === 'triangle' || s.type === 'circle' || s.type === 'path' || s.type === 'text') {
                     return { ...s, fill: color };
                 }
                 return s;
@@ -932,66 +1027,133 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
   const handleShrink = () => handleScale(1 / SCALE_FACTOR);
 
   const handleFlipHorizontal = () => {
-    if (!selectedShapeId) return;
     pushToHistory(shapes);
+    
+    let targetShapeIds: string[] = [];
+    let cx = 240; // Default center (canvas middle)
+
+    if (selectedShapeId) {
+        targetShapeIds = [selectedShapeId];
+        const shape = shapes.find(s => s.id === selectedShapeId);
+        if (shape) {
+            const bbox = getBoundingBox(shape);
+            const hasRef = !!shapeRefs.current[shape.id];
+            cx = hasRef ? (bbox.x + bbox.width / 2) : (bbox.x + parseTransform(shape.transform).tx + bbox.width / 2);
+        }
+    } else {
+        // Flip All - Calculate collective center
+        targetShapeIds = shapes.map(s => s.id);
+        let minX = Infinity, maxX = -Infinity;
+        shapes.forEach(s => {
+            const b = getBoundingBox(s);
+            minX = Math.min(minX, b.x);
+            maxX = Math.max(maxX, b.x + b.width);
+        });
+        if (shapes.length > 0) cx = minX + (maxX - minX) / 2;
+    }
+
     setShapes(prevShapes => prevShapes.map(s => {
-        if (s.id !== selectedShapeId) return s;                
+        if (!targetShapeIds.includes(s.id)) return s;                
         const newShape = { ...s };
         if (newShape.type === 'line') {
-            const bbox = getBoundingBox(newShape);
-            const cx = bbox.x + bbox.width / 2;
             newShape.x1 = 2 * cx - newShape.x1;
             newShape.x2 = 2 * cx - newShape.x2;
-        } else if (newShape.type === 'path') {
-             const bbox = getBoundingBox(newShape);
-             const cx = bbox.x + bbox.width / 2;
-             newShape.transform = `translate(${2 * cx}, 0) scale(-1, 1) ${newShape.transform || ''}`.trim();
+        } else {
+            // Use transform for everything else
+            newShape.transform = `translate(${2 * cx}, 0) scale(-1, 1) ${newShape.transform || ''}`.trim();
         }
         return newShape;
     }));
   };
 
   const handleRotate = () => {
-    if (!selectedShapeId) return;
     pushToHistory(shapes);
-    setShapes(prevShapes => prevShapes.map(s => {
-        if (s.id !== selectedShapeId) return s;                
-        const newShape = { ...s };
-        
-        // Account for current translation in rotation center
-        const bbox = getBoundingBox(newShape);
-        const t = parseTransform(newShape.transform);
-        const cx = bbox.x + t.tx + bbox.width / 2;
-        const cy = bbox.y + t.ty + bbox.height / 2;
-        
-        const transform = newShape.transform || '';
-        // Rotate 15 degrees cumulatively around the actual current center
-        newShape.transform = `rotate(15, ${cx.toFixed(2)}, ${cy.toFixed(2)}) ${transform}`.trim();
+    
+    let targetShapeIds: string[] = [];
+    let cx = 240, cy = 210; // Default center
 
+    if (selectedShapeId) {
+        targetShapeIds = [selectedShapeId];
+        const shape = shapes.find(s => s.id === selectedShapeId);
+        if (shape) {
+            const bbox = getBoundingBox(shape);
+            const hasRef = !!shapeRefs.current[shape.id];
+            if (hasRef) {
+                cx = bbox.x + bbox.width / 2;
+                cy = bbox.y + bbox.height / 2;
+            } else {
+                const t = parseTransform(shape.transform);
+                cx = bbox.x + t.tx + bbox.width / 2;
+                cy = bbox.y + t.ty + bbox.height / 2;
+            }
+        }
+    } else {
+        // Rotate All - Calculate collective center
+        targetShapeIds = shapes.map(s => s.id);
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        shapes.forEach(s => {
+            const b = getBoundingBox(s);
+            minX = Math.min(minX, b.x);
+            minY = Math.min(minY, b.y);
+            maxX = Math.max(maxX, b.x + b.width);
+            maxY = Math.max(maxY, b.y + b.height);
+        });
+        if (shapes.length > 0) {
+            cx = minX + (maxX - minX) / 2;
+            cy = minY + (maxY - minY) / 2;
+        }
+    }
+
+    setShapes(prevShapes => prevShapes.map(s => {
+        if (!targetShapeIds.includes(s.id)) return s;                
+        const newShape = { ...s };
+        const transform = newShape.transform || '';
+        newShape.transform = `rotate(15, ${cx.toFixed(2)}, ${cy.toFixed(2)}) ${transform}`.trim();
         return newShape;
     }));
   };
 
   const handleScale = (factor: number) => {
-    if (!selectedShapeId) return;
     pushToHistory(shapes);
+    
+    let targetShapeIds: string[] = [];
+    let cx = 240, cy = 210;
+
+    if (selectedShapeId) {
+        targetShapeIds = [selectedShapeId];
+        const shape = shapes.find(s => s.id === selectedShapeId);
+        if (shape) {
+            const bbox = getBoundingBox(shape);
+            cx = bbox.x + bbox.width / 2;
+            cy = bbox.y + bbox.height / 2;
+        }
+    } else {
+        targetShapeIds = shapes.map(s => s.id);
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        shapes.forEach(s => {
+            const b = getBoundingBox(s);
+            minX = Math.min(minX, b.x);
+            minY = Math.min(minY, b.y);
+            maxX = Math.max(maxX, b.x + b.width);
+            maxY = Math.max(maxY, b.y + b.height);
+        });
+        if (shapes.length > 0) {
+            cx = minX + (maxX - minX) / 2;
+            cy = minY + (maxY - minY) / 2;
+        }
+    }
+
     setShapes(prevShapes => prevShapes.map(s => {
-        if (s.id !== selectedShapeId) return s;
+        if (!targetShapeIds.includes(s.id)) return s;
 
         const newShape = { ...s };
         const element = shapeRefs.current[newShape.id];
         
-        // Use uniform scaling via transform for all shapes
-        // This avoids issues with mixing coordinate-based and transform-based geometry
         if (element && element instanceof SVGGraphicsElement) {
-            const bbox = element.getBBox();
-            const cx = bbox.x + bbox.width / 2;
-            const cy = bbox.y + bbox.height / 2;
-            
             const transform = newShape.transform || '';
             const scaleRegex = /scale\(([^)]+)\)/;
             const translateRegex = /translate\(([^, )]+)[, ]*([^)]*)\)/;
-
+            
             let currentScale = 1;
             const scaleMatch = transform.match(scaleRegex);
             if (scaleMatch) currentScale = parseFloat(scaleMatch[1]);
@@ -1017,11 +1179,9 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
             else newTransform = `translate(${newTx.toFixed(2)}, ${newTy.toFixed(2)}) ${newTransform}`.trim();
             
             newShape.transform = newTransform;
-            // Optionally scale stroke width if it should relative to object size
-            // newShape.strokeWidth *= factor; 
         } else {
             // Very simple fallback if ref not available
-            if (newShape.type === 'rect') {
+            if (newShape.type === 'rect' || newShape.type === 'triangle') {
                 newShape.width *= factor;
                 newShape.height *= factor;
             } else if (newShape.type === 'circle') {
@@ -1125,153 +1285,210 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
   };
   
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center p-2 backdrop-blur-sm overflow-hidden" dir="ltr">
       {isShapeGalleryOpen && <ShapeGallery onClose={() => setIsShapeGalleryOpen(false)} onSelect={handleSelectShape} />}
-      <div className="bg-slate-200 rounded-xl shadow-2xl w-full h-full flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-white p-2 border-b border-slate-300 flex justify-between items-center shrink-0">
-          <h2 className="text-lg font-bold text-slate-700 ml-4">Paint Editor</h2>
-          <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">Cancel</button>
-            <button onClick={handleSave} className="px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-bold">Save Sprite</button>
-          </div>
-        </header>
-
-        {/* Main Content */}
-        <main className="flex-1 flex items-center justify-center p-4 overflow-hidden">
-          <div className="flex flex-col bg-white shadow-lg rounded-lg overflow-hidden">
-            {/* Top Toolbar */}
-            <div className="p-2 border-b border-slate-200 flex items-center gap-2 bg-slate-50 flex-wrap justify-center">
-                <TopToolButton icon="fa-undo" title="Undo" onClick={handleUndo} disabled={!historyState.canUndo} iconColor="text-blue-500" />
-                <TopToolButton icon="fa-redo" title="Redo" onClick={handleRedo} disabled={!historyState.canRedo} iconColor="text-blue-500" />
-                <Separator />
-                <TopToolButton icon="fa-fill-drip" title="Fill" onClick={handleToggleFill} disabled={!selectedShapeId || (selectedShape?.type === 'line')} iconColor="text-purple-500" />
-                <TopToolButton icon="fa-clone" title="Duplicate" onClick={handleDuplicate} disabled={!selectedShapeId} iconColor="text-green-500" />
-                <TopToolButton icon="fa-search-plus" title="Grow" onClick={handleGrow} disabled={!selectedShapeId} iconColor="text-cyan-500" />
-                <TopToolButton icon="fa-search-minus" title="Shrink" onClick={handleShrink} disabled={!selectedShapeId} iconColor="text-cyan-500" />
-                <TopToolButton icon="fa-trash" title="Delete" onClick={handleDelete} disabled={!selectedShapeId} iconColor="text-red-500" />
-                <Separator />
-                <TopToolButton icon="fa-arrows-alt-h" title="Flip Horizontal" onClick={handleFlipHorizontal} disabled={!selectedShapeId || selectedShape?.type === 'line'} iconColor="text-teal-500" />
-                <TopToolButton icon="fa-sync-alt" title="Rotate" onClick={handleRotate} disabled={!selectedShapeId || selectedShape?.type === 'line'} iconColor="text-teal-500" />
-                <Separator />
-                <TopToolButton icon="fa-arrow-up" title="Bring Forward" onClick={() => handleMoveLayer('forward')} disabled={!selectedShapeId} iconColor="text-orange-500" />
-                <TopToolButton icon="fa-arrow-down" title="Send Backward" onClick={() => handleMoveLayer('backward')} disabled={!selectedShapeId} iconColor="text-orange-500" />
-            </div>
-            <div className="flex">
-              {/* Left Toolbar */}
-              <aside className="w-24 bg-slate-100 p-3 flex flex-col items-center gap-3 border-r border-slate-200">
-                <ToolButton icon="fa-mouse-pointer" label="Select" active={activeTool === 'select'} onClick={() => handleToolSelect('select')} iconColor="text-blue-600" />
-                <div className="w-full border-t border-slate-200 my-1"></div>
-                <ToolButton icon="fa-slash" label="Line" active={activeTool === 'line'} onClick={() => handleToolSelect('line')} iconColor="text-sky-600" />
-                <ToolButton icon="fa-square" label="Rectangle" active={activeTool === 'rect'} onClick={() => handleToolSelect('rect')} iconColor="text-sky-600" />
-                <ToolButton icon="fa-caret-up" label="Triangle" active={activeTool === 'triangle'} onClick={() => handleToolSelect('triangle')} iconColor="text-sky-600" />
-                <ToolButton icon="fa-circle" label="Circle" active={activeTool === 'circle'} onClick={() => handleToolSelect('circle')} iconColor="text-sky-600" />
-                <ToolButton icon="fa-shapes" label="Shapes" onClick={() => setIsShapeGalleryOpen(true)} iconColor="text-purple-600" />
-                <ToolButton icon="fa-pencil-alt" label="Freehand" active={activeTool === 'freehand'} onClick={() => handleToolSelect('freehand')} iconColor="text-sky-600" />
-              </aside>
-
-              {/* Canvas Area */}
-              <div 
-                className={`w-[480px] h-[420px] bg-white bg-checkered ${activeTool === 'select' ? (isDragging ? 'cursor-grabbing' : 'cursor-default') : 'cursor-crosshair'}`}
-                onMouseDown={handleSvgMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
-              >
-                <svg ref={svgRef} width="100%" height="100%">
-                    {shapes.map(shape => {
-                      const commonProps = {
-                        onMouseDown: (e: React.MouseEvent) => handleShapeMouseDown(e, shape.id),
-                        style: { cursor: activeTool === 'select' ? (isDragging && selectedShapeId === shape.id ? 'grabbing' : 'grab') : 'crosshair' },
-                        fill: shape.fill,
-                        stroke: shape.stroke,
-                        strokeWidth: shape.strokeWidth,
-                      };
-                      
-                      const elementRef = (el: SVGElement | null) => { shapeRefs.current[shape.id] = el; };
-
-                      if (shape.type === 'rect') {
-                          return <rect key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} x={shape.x} y={shape.y} width={shape.width} height={shape.height} />;
-                      }
-                      if (shape.type === 'circle') {
-                          return <ellipse key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} cx={shape.cx} cy={shape.cy} rx={shape.rx} ry={shape.ry} />;
-                      }
-                      if (shape.type === 'line') {
-                          return <line key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} x1={shape.x1} y1={shape.y1} x2={shape.x2} y2={shape.y2} strokeLinecap="round"/>;
-                      }
-                      if (shape.type === 'triangle') {
-                          const points = `${shape.x + shape.width / 2},${shape.y} ${shape.x + shape.width},${shape.y + shape.height} ${shape.x},${shape.y + shape.height}`;
-                          return <polygon key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} points={points} />;
-                      }
-                      if (shape.type === 'path') {
-                          return <path key={shape.id} ref={elementRef} {...commonProps} d={shape.d} transform={shape.transform} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>;
-                      }
-                      return null;
-                    })}
-                    {drawingShape?.type === 'rect' && <rect {...drawingShape} fillOpacity="0.5" />}
-                    {drawingShape?.type === 'triangle' && (
-                        <polygon 
-                            points={`${drawingShape.x + drawingShape.width / 2},${drawingShape.y} ${drawingShape.x + drawingShape.width},${drawingShape.y + drawingShape.height} ${drawingShape.x},${drawingShape.y + drawingShape.height}`}
-                            fill={drawingShape.fill}
-                            stroke={drawingShape.stroke}
-                            strokeWidth={drawingShape.strokeWidth}
-                            fillOpacity="0.5"
-                        />
-                    )}
-                    {drawingShape?.type === 'circle' && <ellipse {...drawingShape} fillOpacity="0.5" />}
-                    {drawingShape?.type === 'line' && <line {...drawingShape} strokeOpacity="0.5" strokeLinecap="round" />}
-                    {drawingShape?.type === 'path' && <path {...drawingShape} strokeOpacity="0.5" strokeLinejoin="round" strokeLinecap="round"/>}
-                    {selectedShape && (() => {
-                        const b = getBoundingBox(selectedShape);
-                        return <rect id="selection-box" x={b.x-4} y={b.y-4} width={b.width+8} height={b.height+8} fill="none" stroke="#3b82f6" strokeWidth="2" strokeDasharray="4 4" pointerEvents="none" />;
-                    })()}
-                </svg>
-              </div>
-
-            </div>
-             {/* Color Palette */}
-            <div className="p-3 border-t border-slate-200 flex justify-center items-center gap-4 bg-white">
-                <div className="flex gap-2">
-                    <ColorPickerTarget
-                        type="fill"
-                        color={fillColor}
-                        isActive={activeColorTarget === 'fill'}
-                        onClick={() => setActiveColorTarget('fill')}
-                    />
-                    <ColorPickerTarget
-                        type="stroke"
-                        color={strokeColor}
-                        isActive={activeColorTarget === 'stroke'}
-                        onClick={() => setActiveColorTarget('stroke')}
-                    />
+      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-6xl max-h-full flex flex-col border-4 border-slate-400 overflow-hidden">
+        {/* Kid-Friendly Header */}
+        <div className="p-4 border-b-2 border-slate-100 flex items-center justify-between bg-white shrink-0">
+            <div className="flex items-center gap-4">
+                <div className="bg-blue-600 p-3 rounded-2xl text-white shadow-xl shadow-blue-100">
+                    <i className="fas fa-paint-brush text-2xl"></i>
                 </div>
-                <div className="w-px h-16 bg-slate-200"></div>
-                <div className="grid grid-cols-9 gap-2">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-800 leading-none">Paint Editor</h2>
+                  <span className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1 block">Studio Canvas</span>
+                </div>
+            </div>
+
+            {/* Top Toolbar Actions */}
+            <div className="flex items-center gap-2">
+                <div className="flex items-center bg-slate-50 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
+                    <TopToolButton icon="fa-undo" title="Undo" onClick={handleUndo} disabled={!historyState.canUndo} iconColor="text-blue-500" />
+                    <TopToolButton icon="fa-redo" title="Redo" onClick={handleRedo} disabled={!historyState.canRedo} iconColor="text-blue-500" />
+                    <Separator />
+                    <TopToolButton icon="fa-grid-view" title="Toggle Grid" onClick={() => setShowGrid(!showGrid)} iconColor={showGrid ? "text-blue-500" : "text-slate-400"} />
+                </div>
+
+                <div className="h-10 w-px bg-slate-200 mx-1"></div>
+
+                <div className="flex items-center gap-2">
+                    <button onClick={onClose} className="px-6 py-2.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-600 font-black transition-all hover:scale-105 active:scale-95 border-2 border-slate-200 shadow-sm">
+                       Cancel
+                    </button>
+                    <button onClick={handleSave} className="px-8 py-2.5 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-black shadow-lg shadow-green-100 transition-all hover:scale-105 active:scale-95 flex items-center gap-3">
+                       <i className="fas fa-check text-lg"></i>
+                       Save Sprite
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {/* Tools Toolbar (Action centric) */}
+        <div className="p-2 border-b-2 border-slate-100 flex items-center gap-6 overflow-x-auto bg-slate-50/30 justify-center shrink-0 no-scrollbar">
+            <div className="flex items-center bg-white p-1 rounded-2xl shadow-sm border-2 border-slate-100">
+              <TopToolButton icon="fa-fill-drip" title="Toggle Fill" onClick={handleToggleFill} disabled={!selectedShapeId || (selectedShape?.type === 'line')} iconColor="text-purple-500" />
+              <TopToolButton icon="fa-clone" title="Duplicate" onClick={handleDuplicate} disabled={!selectedShapeId} iconColor="text-green-500" />
+              <TopToolButton icon="fa-trash" title="Delete" onClick={handleDelete} disabled={!selectedShapeId} iconColor="text-red-500" />
+              <TopToolButton icon="fa-broom" title="Clear Canvas" onClick={handleClearAll} disabled={shapes.length === 0} iconColor="text-red-700" />
+            </div>
+
+            <div className="flex items-center bg-white p-1 rounded-2xl shadow-sm border-2 border-slate-100">
+              <TopToolButton icon="fa-search-plus" title="Grow" onClick={handleGrow} disabled={shapes.length === 0} iconColor="text-cyan-500" />
+              <TopToolButton icon="fa-search-minus" title="Shrink" onClick={handleShrink} disabled={shapes.length === 0} iconColor="text-cyan-500" />
+              <Separator />
+              <TopToolButton icon="fa-arrows-alt-h" title="Flip Horizontal" onClick={handleFlipHorizontal} disabled={shapes.length === 0} iconColor="text-teal-600" />
+              <TopToolButton icon="fa-sync-alt" title="Rotate" onClick={handleRotate} disabled={shapes.length === 0} iconColor="text-teal-600" />
+            </div>
+
+            <div className="flex items-center bg-white p-1 rounded-2xl shadow-sm border-2 border-slate-100">
+              <TopToolButton icon="fa-angle-double-up" title="Bring to Front" onClick={() => handleMoveLayer('front')} disabled={!selectedShapeId} iconColor="text-orange-700" />
+              <TopToolButton icon="fa-angle-up" title="Bring Forward" onClick={() => handleMoveLayer('forward')} disabled={!selectedShapeId} iconColor="text-orange-500" />
+              <TopToolButton icon="fa-angle-down" title="Send Backward" onClick={() => handleMoveLayer('backward')} disabled={!selectedShapeId} iconColor="text-orange-500" />
+              <TopToolButton icon="fa-angle-double-down" title="Send to Back" onClick={() => handleMoveLayer('back')} disabled={!selectedShapeId} iconColor="text-orange-700" />
+            </div>
+        </div>
+
+        {/* Main Workspace */}
+        <div className="flex-1 flex overflow-hidden min-h-0 bg-slate-100/50">
+          {/* Left Sidebar: Drawing Tools */}
+          <aside className="w-20 bg-white p-3 flex flex-col items-center gap-3 border-r-2 border-slate-100 overflow-y-auto no-scrollbar shrink-0">
+            <ToolButton icon="fa-mouse-pointer" label="Select" active={activeTool === 'select'} onClick={() => handleToolSelect('select')} iconColor="text-blue-600" />
+            <div className="w-12 h-0.5 bg-slate-100 rounded-full my-1"></div>
+            <ToolButton icon="fa-pencil-alt" label="Brush" active={activeTool === 'freehand'} onClick={() => handleToolSelect('freehand')} iconColor="text-emerald-500" />
+            <ToolButton icon="fa-slash" label="Line" active={activeTool === 'line'} onClick={() => handleToolSelect('line')} iconColor="text-blue-400" />
+            <ToolButton icon="fa-square" label="Rectangle" active={activeTool === 'rect'} onClick={() => handleToolSelect('rect')} iconColor="text-blue-400" />
+            <ToolButton icon="fa-circle" label="Circle" active={activeTool === 'circle'} onClick={() => handleToolSelect('circle')} iconColor="text-blue-400" />
+            <ToolButton icon="fa-caret-up" label="Triangle" active={activeTool === 'triangle'} onClick={() => handleToolSelect('triangle')} iconColor="text-blue-400" />
+            <ToolButton icon="fa-shapes" label="Library" onClick={() => setIsShapeGalleryOpen(true)} iconColor="text-violet-500" />
+            <ToolButton icon="fa-text-height" label="Text" active={activeTool === 'text'} onClick={() => handleToolSelect('text')} iconColor="text-indigo-500" />
+          </aside>
+
+          {/* Canvas Viewport */}
+          <div className="flex-1 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+            <div 
+              className={`bg-white rounded-[1.5rem] shadow-2xl relative shrink-0 border-4 border-white ring-1 ring-slate-200 ${activeTool === 'select' ? (isDragging ? 'cursor-grabbing' : 'cursor-default') : 'cursor-crosshair'}`}
+              style={{ 
+                  width: '480px',
+                  height: '420px',
+                  backgroundImage: showGrid 
+                      ? 'linear-gradient(to right, #f8fafc 1px, transparent 1px), linear-gradient(to bottom, #f8fafc 1px, transparent 1px)' 
+                      : 'repeating-conic-gradient(#f8fafc 0% 25%, transparent 0% 50%, #f8fafc 50% 75%, transparent 75%)',
+                  backgroundSize: showGrid ? '20px 20px' : '10px 10px'
+              }}
+              onMouseDown={handleSvgMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
+            >
+              <svg ref={svgRef} width="100%" height="100%" className="rounded-[1.25rem]">
+                  {shapes.map(shape => {
+                    const commonProps = {
+                      onMouseDown: (e: React.MouseEvent) => handleShapeMouseDown(e, shape.id),
+                      style: { cursor: activeTool === 'select' ? (isDragging && selectedShapeId === shape.id ? 'grabbing' : 'grab') : 'crosshair' },
+                      fill: shape.fill,
+                      stroke: shape.stroke,
+                      strokeWidth: shape.strokeWidth,
+                    };
+                    const elementRef = (el: SVGElement | null) => { shapeRefs.current[shape.id] = el; };
+                    if (shape.type === 'rect') return <rect key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} x={shape.x} y={shape.y} width={shape.width} height={shape.height} />;
+                    if (shape.type === 'circle') return <ellipse key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} cx={shape.cx} cy={shape.cy} rx={shape.rx} ry={shape.ry} />;
+                    if (shape.type === 'line') return <line key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} x1={shape.x1} y1={shape.y1} x2={shape.x2} y2={shape.y2} strokeLinecap="round"/>;
+                    if (shape.type === 'triangle') {
+                        const points = `${shape.x + shape.width / 2},${shape.y} ${shape.x + shape.width},${shape.y + shape.height} ${shape.x},${shape.y + shape.height}`;
+                        return <polygon key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} points={points} />;
+                    }
+                    if (shape.type === 'path') return <path key={shape.id} ref={elementRef} {...commonProps} d={shape.d} transform={shape.transform} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>;
+                    if (shape.type === 'text') return <text key={shape.id} ref={elementRef} {...commonProps} x={shape.x} y={shape.y} fontSize={shape.fontSize} fontFamily={shape.fontFamily} transform={shape.transform} stroke="none" >{shape.text}</text>;
+                    return null;
+                  })}
+                  {drawingShape?.type === 'rect' && <rect {...drawingShape} fillOpacity="0.5" />}
+                  {drawingShape?.type === 'triangle' && (
+                      <polygon points={`${drawingShape.x + drawingShape.width / 2},${drawingShape.y} ${drawingShape.x + drawingShape.width},${drawingShape.y + drawingShape.height} ${drawingShape.x},${drawingShape.y + drawingShape.height}`} fill={drawingShape.fill} stroke={drawingShape.stroke} strokeWidth={drawingShape.strokeWidth} fillOpacity="0.5" />
+                  )}
+                  {drawingShape?.type === 'circle' && <ellipse {...drawingShape} fillOpacity="0.5" />}
+                  {drawingShape?.type === 'line' && <line {...drawingShape} strokeOpacity="0.5" strokeLinecap="round" />}
+                  {drawingShape?.type === 'path' && <path {...drawingShape} strokeOpacity="0.5" strokeLinejoin="round" strokeLinecap="round"/>}
+                  {selectedShape && (() => {
+                      const b = getBoundingBox(selectedShape);
+                      return <rect id="selection-box" x={b.x-4} y={b.y-4} width={b.width+8} height={b.height+8} fill="none" stroke="#3b82f6" strokeWidth="2" strokeDasharray="4 4" pointerEvents="none" />;
+                  })()}
+              </svg>
+            </div>
+          </div>
+
+          {/* Right Sidebar: Layers List (Optimized) */}
+          <aside className="w-56 bg-slate-50 flex flex-col border-l-2 border-slate-100 shrink-0 overflow-hidden">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Layers</span>
+                </div>
+                <span className="bg-slate-100 px-2.5 py-1 rounded-lg text-[10px] text-slate-600 font-bold border border-slate-200">{shapes.length}</span>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto flex flex-col gap-2 p-3 no-scrollbar">
+                {[...shapes].reverse().map((shape, index) => {
+                    const actualIndex = shapes.length - 1 - index;
+                    return (
+                        <div key={shape.id} onClick={() => setSelectedShapeId(shape.id)} className={`group flex items-center gap-3 p-2 rounded-2xl cursor-pointer transition-all border-2 ${selectedShapeId === shape.id ? 'bg-blue-600 border-blue-400 shadow-lg -translate-y-0.5' : 'bg-white hover:bg-slate-100 border-slate-100 text-slate-600'}`}>
+                            <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden group-hover:scale-110 transition-transform">
+                                 <svg viewBox="0 0 100 100" className="w-7 h-7">
+                                    {shape.type === 'rect' && <rect x="10" y="10" width="80" height="80" fill={shape.fill} stroke={shape.stroke} strokeWidth={shape.strokeWidth * 2} />}
+                                    {shape.type === 'circle' && <circle cx="50" cy="50" r="40" fill={shape.fill} stroke={shape.stroke} strokeWidth={shape.strokeWidth * 2} />}
+                                    {shape.type === 'line' && <line x1="10" y1="90" x2="90" y2="10" stroke={shape.stroke} strokeWidth={shape.strokeWidth * 2} />}
+                                    {shape.type === 'triangle' && <polygon points="50,10 90,90 10,90" fill={shape.fill} stroke={shape.stroke} strokeWidth={shape.strokeWidth * 2} />}
+                                    {shape.type === 'path' && <path d="M20,50 Q50,10 80,50 T50,90" fill={shape.fill} stroke={shape.stroke} strokeWidth={shape.strokeWidth * 2} />}
+                                    {shape.type === 'text' && <text x="50" y="65" textAnchor="middle" fontSize="40" fill={shape.fill}>T</text>}
+                                 </svg>
+                            </div>
+                            <span className={`flex-1 truncate capitalize font-black text-xs ${selectedShapeId === shape.id ? 'text-white' : 'text-slate-700'}`}>{shape.type} {actualIndex + 1}</span>
+                            <button onClick={(e) => { e.stopPropagation(); pushToHistory(shapes); setShapes(shapes.filter(s => s.id !== shape.id)); if (selectedShapeId === shape.id) setSelectedShapeId(null); }} className={`p-2 rounded-xl transition-all ${selectedShapeId === shape.id ? 'hover:bg-white/20 text-white opacity-60 hover:opacity-100' : 'hover:bg-red-50 hover:text-red-500 text-slate-300 opacity-0 group-hover:opacity-100'}`} >
+                                <i className="fas fa-trash-alt text-xs"></i>
+                            </button>
+                        </div>
+                    );
+                })}
+                {shapes.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-12 opacity-30 text-center animate-in fade-in zoom-in">
+                        <div className="bg-slate-200/50 p-6 rounded-full mb-4">
+                            <i className="fas fa-layer-group text-4xl text-slate-400"></i>
+                        </div>
+                        <p className="text-xs font-black text-slate-500 uppercase tracking-widest">No Layers</p>
+                        <p className="text-[10px] text-slate-400 mt-1">Start your masterpiece!</p>
+                    </div>
+                )}
+            </div>
+          </aside>
+        </div>
+
+        {/* Visual Properties Bar */}
+        <div className="p-4 border-t-2 border-slate-100 flex justify-center items-center gap-10 bg-white shrink-0 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)]">
+            <div className="flex gap-4 p-2 bg-slate-50 rounded-3xl border-2 border-slate-100">
+                <ColorPickerTarget type="fill" color={fillColor} isActive={activeColorTarget === 'fill'} onClick={() => setActiveColorTarget('fill')} />
+                <ColorPickerTarget type="stroke" color={strokeColor} isActive={activeColorTarget === 'stroke'} onClick={() => setActiveColorTarget('stroke')} />
+            </div>
+
+            <div className="flex flex-col gap-2 max-w-sm flex-1">
+                <div className="flex items-center justify-between px-2">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Color Palette</span>
+                    <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">{activeColorTarget === 'fill' ? 'Fill Mode' : 'Stroke Mode'}</span>
+                </div>
+                <div className="grid grid-cols-9 gap-2 p-2.5 bg-slate-100/50 rounded-2xl border-2 border-slate-100">
                     {COLORS.map(color => (
-                        <ColorSwatch 
-                            key={color} 
-                            color={color} 
-                            active={(activeColorTarget === 'fill' && fillColor === color) || (activeColorTarget === 'stroke' && strokeColor === color)}
-                            onClick={() => handleColorChange(color)} 
-                        />
+                        <ColorSwatch key={color} color={color} active={(activeColorTarget === 'fill' && fillColor === color) || (activeColorTarget === 'stroke' && strokeColor === color)} onClick={() => handleColorChange(color)} />
                     ))}
                 </div>
-                 <div className="w-px h-16 bg-slate-200"></div>
-                <div className="relative">
-                    <ToolButton icon="fa-ruler-horizontal" label={`${strokeWidth}px`} onClick={() => setIsStrokePickerOpen(p => !p)} iconColor="text-slate-500" />
-                    {isStrokePickerOpen && (
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white rounded-lg shadow-lg p-2 flex flex-col gap-2 border z-10">
-                            {[2, 4, 8, 16].map(w => (
-                                <button key={w} onClick={() => handleStrokeWidthChange(w)} className={`w-12 h-8 rounded flex items-center justify-center ${strokeWidth === w ? 'bg-blue-200' : 'bg-slate-100 hover:bg-slate-200'}`}>
-                                    <div style={{height: `${w}px`}} className="w-full bg-slate-800 rounded-full"></div>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
             </div>
-          </div>
-        </main>
+
+            <div className="flex flex-col gap-3 min-w-[160px] p-4 bg-slate-50 rounded-3xl border-2 border-slate-100">
+                <div className="flex justify-between items-center px-1">
+                    <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Thickness</span>
+                    <span className="text-xs font-black text-blue-700 bg-white w-9 h-9 flex items-center justify-center rounded-xl shadow-sm border border-slate-200">{strokeWidth}</span>
+                </div>
+                <input type="range" min="1" max="100" value={strokeWidth} onChange={(e) => handleStrokeWidthChange(parseInt(e.target.value))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+            </div>
+        </div>
       </div>
     </div>
   );
 };
+
 
 export default PaintEditor;

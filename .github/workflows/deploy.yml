@@ -3,11 +3,18 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: ["main"]
+  # מאפשר להריץ את ה-Workflow גם ידנית דרך הטאב Actions
+  workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
+
+# מבטיח שאם תדחוף קוד חדש בזמן ש-Build ישן רץ, הישן יתבטל כדי לחסוך זמן
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -20,12 +27,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          # הוספת cache משפרת מהירות ומונעת תקלות התקנה
           cache: 'npm'
 
       - name: Install Dependencies
-        # שימוש ב-npm ci מומלץ לסביבת CI כי הוא מתקין בדיוק מה שיש ב-lock file
-        run: npm install
+        # npm ci הוא הקריטי כאן - הוא מתקין בדיוק את החבילות שמופיעות ב-lockfile
+        run: npm ci
 
       - name: Build
         run: npm run build
@@ -33,11 +39,12 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
+          # וודא שתיקיית הפלט של Vite היא אכן dist
           path: './dist'
 
       - name: Deploy to GitHub Pages

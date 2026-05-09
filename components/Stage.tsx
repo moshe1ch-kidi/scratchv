@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useState, useLayoutEffect, useEffect } from 'react';
+ import React, { useRef, useMemo, useState, useLayoutEffect, useEffect } from 'react';
 import { Sprite, SpriteState } from '../types';
 
 // Grid constants

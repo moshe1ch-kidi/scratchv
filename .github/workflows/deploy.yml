@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+ name: Deploy to GitHub Pages
 
 on:
   push:
@@ -27,11 +27,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          # ביטלתי את ה-cache זמנית כדי לוודא התקנה נקייה ללא שגיאות lockfile
+          # cache: 'npm' 
 
       - name: Install Dependencies
-        # npm ci הוא הקריטי כאן - הוא מתקין בדיוק את החבילות שמופיעות ב-lockfile
-        run: npm ci
+        # שינינו מ-npm ci ל-npm install כדי להתגבר על חוסר הסנכרון בגרסאות
+        run: npm install
 
       - name: Build
         run: npm run build

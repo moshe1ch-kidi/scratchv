@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
-import * as BlocklyJS from 'blockly/javascript';A
+import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
 import Stage from './components/Stage';
 import SpriteGallery from './components/SpriteGallery';

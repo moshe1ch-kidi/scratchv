@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
-import * as BlocklyJS from 'blockly/javascript';
+import * as BlocklyJS from 'blockly/javascript';A
 import BlocklyEditor from './components/BlocklyEditor';
 import Stage from './components/Stage';
 import SpriteGallery from './components/SpriteGallery';
@@ -406,16 +406,19 @@ const App: React.FC = () => {
               pps: 1, // units per second now
               duration: 1000, // 1 unit = 1000ms
               turnDuration: 800,
+              scaleDuration: 600,
           },
           medium: { 
               pps: 2, 
               duration: 500, // 1 unit = 500ms
               turnDuration: 400,
+              scaleDuration: 300,
           },
           fast: { 
               pps: 5,
               duration: 200, // 1 unit = 200ms
               turnDuration: 100,
+              scaleDuration: 150,
           }
       };
 
@@ -663,8 +666,28 @@ const App: React.FC = () => {
           await wait(50);
           updateRuntimeSprite(spriteId, s => ({...s, message: null}));
         },
-        grow: async () => { updateRuntimeSprite(spriteId, s => ({...s, scale: s.scale * 1.25})); await wait(2); },
-        shrink: async () => { updateRuntimeSprite(spriteId, s => ({...s, scale: s.scale * 0.8})); await wait(2); },
+        grow: async () => {
+          const { scaleDuration } = getSpeedSettings();
+          const factor = 1.25;
+          const startScale = runtimeSpriteStatesRef.current[spriteId]?.scale ?? 1;
+          const targetScale = startScale * factor;
+          const diff = targetScale - startScale;
+          
+          await animateMovement(scaleDuration, (p, dp) => {
+            updateRuntimeSprite(spriteId, s => ({...s, scale: s.scale + diff * dp}));
+          });
+        },
+        shrink: async () => {
+          const { scaleDuration } = getSpeedSettings();
+          const factor = 0.8;
+          const startScale = runtimeSpriteStatesRef.current[spriteId]?.scale ?? 1;
+          const targetScale = startScale * factor;
+          const diff = targetScale - startScale;
+          
+          await animateMovement(scaleDuration, (p, dp) => {
+            updateRuntimeSprite(spriteId, s => ({...s, scale: s.scale + diff * dp}));
+          });
+        },
         resetSize: async () => {
             const sprite = currentPage.sprites.find(s => s.id === spriteId);
             if(sprite) updateRuntimeSprite(spriteId, s => ({...s, scale: sprite.initialState.scale}));

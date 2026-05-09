@@ -1,9 +1,8 @@
- name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
     branches: ["main"]
-  # מאפשר להריץ את ה-Workflow גם ידנית דרך הטאב Actions
   workflow_dispatch:
 
 permissions:
@@ -11,7 +10,6 @@ permissions:
   pages: write
   id-token: write
 
-# מבטיח שאם תדחוף קוד חדש בזמן ש-Build ישן רץ, הישן יתבטל כדי לחסוך זמן
 concurrency:
   group: "pages"
   cancel-in-progress: true
@@ -27,11 +25,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          # ביטלתי את ה-cache זמנית כדי לוודא התקנה נקייה ללא שגיאות lockfile
-          # cache: 'npm' 
 
       - name: Install Dependencies
-        # שינינו מ-npm ci ל-npm install כדי להתגבר על חוסר הסנכרון בגרסאות
         run: npm install
 
       - name: Build
@@ -45,7 +40,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # וודא שתיקיית הפלט של Vite היא אכן dist
           path: './dist'
 
       - name: Deploy to GitHub Pages

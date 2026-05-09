@@ -195,7 +195,7 @@ const SpriteCharacter: React.FC<{
                     <img
                       src={sprite.costume}
                       alt={sprite.name}
-                      className="object-contain drop-shadow-lg group-hover/sprite:scale-110 transition-transform"
+                      className="object-contain drop-shadow-lg group-hover/sprite:scale-110"
                       style={{ 
                         imageRendering: 'pixelated',
                         width: `${imageSize}px`,

@@ -1392,7 +1392,17 @@ const App: React.FC = () => {
             <NavButton icon="fas fa-folder-open" alt="Load Project" onClick={handleLoadProject} />
             <NavButton icon="fas fa-sync-alt" alt="Reload App" onClick={() => setIsReloadConfirmOpen(true)} />
             <div className="w-px h-16 bg-slate-300/50 mx-2"></div>
-            <NavButton icon="fas fa-book-open" alt="Coding Cards" onClick={() => setIsCodingCardsOpen(true)} />
+            <NavButton 
+              src={`data:image/svg+xml,${encodeURIComponent(`
+                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M40 10C26.1929 10 15 21.1929 15 35C15 43.5273 19.2736 51.0561 25.7842 55.5037C26.7741 56.1798 27.5 57.293 27.5 58.5V65C27.5 67.2091 29.2909 69 31.5 69H48.5C50.7091 69 52.5 67.2091 52.5 65V58.5C52.5 57.293 53.2259 56.1798 54.2158 55.5037C60.7264 51.0561 65 43.5273 65 35C65 21.1929 53.8071 10 40 10Z" fill="#FBBF24"/>
+                  <path d="M35 27V43L48 35L35 27Z" fill="white" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                  <path d="M32 72C32 73.6569 33.3431 75 35 75H45C46.6569 75 48 73.6569 48 72H32Z" fill="#94A3B8"/>
+                </svg>
+              `)}`} 
+              alt="Video Tutorials" 
+              onClick={() => setIsCodingCardsOpen(true)} 
+            />
             <NavButton src="https://raw.githubusercontent.com/scratchfoundation/scratchjr/develop/editions/free/src/assets/ui/fullOff2.svg" alt="Presentation Mode" onClick={handleTogglePresentationMode} />
             <NavButton src={showGrid ? "https://codejredu.github.io/jr/scratchjr/assets/ui/gridOff.svg" : "https://codejredu.github.io/jr/scratchjr/assets/ui/gridOn.svg"} alt="Show/Hide Grid" onClick={() => setShowGrid(prev => !prev)} />
             <NavButton src="https://codejredu.github.io/jr/scratchjr/assets/ui/scene1.svg" alt="Change Background" onClick={() => setIsBgGalleryOpen(true)} />

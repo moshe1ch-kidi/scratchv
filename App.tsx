@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+ import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
@@ -81,7 +81,7 @@ const NavButton: React.FC<{src?: string, icon?: string, alt: string, onClick?: (
     <button
       onClick={onClick}
       disabled={disabled}
-      className="p-1 disabled:opacity-40 disabled:cursor-not-allowed group focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-full"
+      className="p-1 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:scale-110 active:scale-95 transition-transform group focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-full"
       title={alt}
     >
     {src ? (
@@ -1340,13 +1340,13 @@ const App: React.FC = () => {
             <div className="flex gap-4 justify-center">
               <button 
                 onClick={() => setIsReloadConfirmOpen(false)}
-                className="px-6 py-2 bg-slate-200 hover:bg-slate-300 rounded-full font-bold text-slate-700 transition-colors"
+                className="px-6 py-2 bg-slate-200 hover:bg-slate-300 rounded-full font-bold text-slate-700 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button 
                 onClick={handleReload}
-                className="px-6 py-2 bg-red-500 hover:bg-red-600 rounded-full font-bold text-white transition-colors"
+                className="px-6 py-2 bg-red-500 hover:bg-red-600 rounded-full font-bold text-white transition-colors cursor-pointer"
               >
                 Reload
               </button>
@@ -1378,7 +1378,7 @@ const App: React.FC = () => {
          <div className="flex items-center gap-4">
             <button 
                 onClick={() => setIsAboutOpen(true)}
-                className="focus:outline-none focus:ring-2 focus:ring-blue-300 rounded-lg transition-transform hover:scale-105 active:scale-95"
+                className="focus:outline-none focus:ring-2 focus:ring-blue-300 rounded-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
                 title="About STACKKIDI"
             >
                 <img 

@@ -217,7 +217,7 @@ const SpriteGallery: React.FC<SpriteGalleryProps> = ({ onClose, onSelect, onPain
                  Clear all
                </button>
              )}
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-800 text-2xl">
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-800 text-2xl cursor-pointer">
               <i className="fas fa-times-circle"></i>
             </button>
           </div>
@@ -231,7 +231,7 @@ const SpriteGallery: React.FC<SpriteGalleryProps> = ({ onClose, onSelect, onPain
                 key={id}
                 onClick={() => setActiveCategory(id as any)}
                 title={category.label}
-                className={`px-4 py-2 rounded-xl text-xl transition-all whitespace-nowrap flex items-center justify-center min-w-[3rem] ${
+                className={`px-4 py-2 rounded-xl text-xl transition-all whitespace-nowrap flex items-center justify-center min-w-[3rem] cursor-pointer ${
                   activeCategory === id 
                     ? 'bg-blue-500 text-white shadow-md' 
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'

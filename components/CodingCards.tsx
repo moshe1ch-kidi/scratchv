@@ -289,7 +289,7 @@ const CodingCards: React.FC<CodingCardsProps> = ({ onClose }) => {
           </h2>
           <button 
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
+            className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors cursor-pointer"
           >
             <i className="fas fa-times text-xl"></i>
           </button>
@@ -302,7 +302,7 @@ const CodingCards: React.FC<CodingCardsProps> = ({ onClose }) => {
               <button
                 key={card.id}
                 onClick={() => setSelectedCard(card)}
-                className="bg-white rounded-xl shadow-sm hover:shadow-md border-2 border-transparent hover:border-blue-300 transition-all flex flex-col items-center justify-between group aspect-square overflow-hidden p-0"
+                className="bg-white rounded-xl shadow-sm hover:shadow-md border-2 border-transparent hover:border-blue-300 transition-all flex flex-col items-center justify-between group aspect-square overflow-hidden p-0 cursor-pointer"
               >
                 <div 
                   className="w-full flex-1 flex items-center justify-center p-4 transition-transform group-hover:scale-105"
@@ -332,7 +332,7 @@ const CodingCards: React.FC<CodingCardsProps> = ({ onClose }) => {
             <div className="bg-white w-full max-w-4xl max-h-[90%] rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
               <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
                  <h3 className="text-xl font-bold text-slate-800">{selectedCard.title}</h3>
-                 <button onClick={() => setSelectedCard(null)} className="text-slate-400 hover:text-slate-600">
+                 <button onClick={() => setSelectedCard(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                     <i className="fas fa-times text-xl"></i>
                  </button>
               </div>

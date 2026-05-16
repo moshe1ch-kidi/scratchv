@@ -1329,7 +1329,7 @@ const App: React.FC = () => {
   const handleLoadProject = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.blym,application/json';
+    input.accept = '.stk,application/json';
 
     input.onchange = (e) => {
         const target = e.target as HTMLInputElement;

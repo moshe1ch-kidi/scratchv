@@ -1431,16 +1431,14 @@ const App: React.FC = () => {
           onSave={(newCostume) => {
               if (isPaintEditorBackground) {
                   setCustomBackgrounds(prev => {
-                      if (editingSprite && editingSprite.costume && editingSprite.costume !== '') {
-                          // Replace the edited background
-                          return prev.map(bg => bg === editingSprite.costume ? newCostume : bg);
-                      } else {
-                          // Add as a new background
-                          if (!prev.includes(newCostume)) {
-                             return [newCostume, ...prev];
+                      if (!prev.includes(newCostume)) {
+                          // If we were editing an existing custom background, replace it
+                          if (editingSprite?.costume && prev.includes(editingSprite.costume)) {
+                              return prev.map(bg => bg === editingSprite.costume ? newCostume : bg);
                           }
-                          return prev;
+                          return [newCostume, ...prev];
                       }
+                      return prev;
                   });
                   handleBackgroundSelect(newCostume);
               } else {

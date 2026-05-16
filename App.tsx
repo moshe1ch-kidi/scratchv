@@ -1,4 +1,4 @@
- import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Blockly from 'blockly';
 import * as BlocklyJS from 'blockly/javascript';
 import BlocklyEditor from './components/BlocklyEditor';
@@ -246,6 +246,8 @@ const App: React.FC = () => {
   const [pageToDeleteId, setPageToDeleteId] = useState<string | null>(null);
   const [editingTextSpriteId, setEditingTextSpriteId] = useState<string | null>(null);
   const [newlyCreatedTextSpriteId, setNewlyCreatedTextSpriteId] = useState<string | null>(null);
+  const [isPaintEditorBackground, setIsPaintEditorBackground] = useState(false);
+  const [customBackgrounds, setCustomBackgrounds] = useState<string[]>([]);
 
   // Store cell size for pixel-based calculations
   const [cellSize, setCellSize] = useState<number>(0);
@@ -947,8 +949,32 @@ const App: React.FC = () => {
   };
 
   const handleBackgroundSelect = (backgroundUrl: string) => {
-    setPages(pages.map(p => p.id === currentPageId ? {...p, background: `url(${backgroundUrl})`} : p ));
+    // If backgroundUrl is already a data URL or similar, use it. 
+    // Otherwise wrap it in url() if it's just a raw URL string
+    const finalBg = backgroundUrl.startsWith('data:') || backgroundUrl.startsWith('url(') 
+      ? (backgroundUrl.startsWith('data:') ? `url(${backgroundUrl})` : backgroundUrl)
+      : `url(${backgroundUrl})`;
+      
+    setPages(pages.map(p => p.id === currentPageId ? {...p, background: finalBg} : p ));
     setIsBgGalleryOpen(false);
+  };
+
+  const handlePaintBackground = (initialUrl?: string) => {
+    setIsBgGalleryOpen(false);
+    setIsPaintEditorBackground(true);
+    if (initialUrl) {
+      setEditingSprite({
+        id: 'bg-temp',
+        name: 'Background',
+        type: 'image',
+        costume: initialUrl,
+        initialState: { ...INITIAL_SPRITE_STATE },
+        workspaceXml: ''
+      });
+    } else {
+      setEditingSprite(null);
+    }
+    setIsPaintEditorOpen(true);
   };
   
   const handlePageSwitch = (pageId: string) => {
@@ -1079,6 +1105,7 @@ const App: React.FC = () => {
   const handleOpenPaintEditorForNew = () => {
       setIsGalleryOpen(false);
       setEditingSprite(null);
+      setIsPaintEditorBackground(false);
       setIsPaintEditorOpen(true);
   };
 
@@ -1087,6 +1114,7 @@ const App: React.FC = () => {
     if (spriteToEdit && spriteToEdit.type === 'image') {
         const isSvg = spriteToEdit.costume.endsWith('.svg') || spriteToEdit.costume.startsWith('data:image/svg+xml');
         if (isSvg) {
+            setIsPaintEditorBackground(false);
             setEditingSprite(spriteToEdit);
             setIsPaintEditorOpen(true);
         }
@@ -1388,20 +1416,50 @@ const App: React.FC = () => {
         </div>
       )}
       {isGalleryOpen && <SpriteGallery onClose={() => setIsGalleryOpen(false)} onSelect={handleAddSpritesFromGallery} onPaintNew={handleOpenPaintEditorForNew} />}
-      {isBgGalleryOpen && <BackgroundGallery onClose={() => setIsBgGalleryOpen(false)} onSelect={handleBackgroundSelect} />}
+      {isBgGalleryOpen && <BackgroundGallery 
+        customBackgrounds={customBackgrounds}
+        onClose={() => setIsBgGalleryOpen(false)} 
+        onSelect={handleBackgroundSelect} 
+        onPaint={handlePaintBackground}
+      />}
       {isPaintEditorOpen && <PaintEditor 
           onClose={() => {
               setIsPaintEditorOpen(false);
               setEditingSprite(null);
+              setIsPaintEditorBackground(false);
           }} 
           onSave={(newCostume) => {
-              if (editingSprite) {
-                  handleUpdatePaintedSprite(editingSprite.id, newCostume);
+              if (isPaintEditorBackground) {
+                  setCustomBackgrounds(prev => {
+                      if (editingSprite && editingSprite.costume && editingSprite.costume !== '') {
+                          // Replace the edited background
+                          return prev.map(bg => bg === editingSprite.costume ? newCostume : bg);
+                      } else {
+                          // Add as a new background
+                          if (!prev.includes(newCostume)) {
+                             return [newCostume, ...prev];
+                          }
+                          return prev;
+                      }
+                  });
+                  handleBackgroundSelect(newCostume);
               } else {
-                  handleSavePaintedSprite(newCostume);
+                  // Ensure it doesn't spill into background logic
+                  if (editingSprite && editingSprite.id !== 'bg-temp') {
+                      handleUpdatePaintedSprite(editingSprite.id, newCostume);
+                  } else if (!isPaintEditorBackground) {
+                      handleSavePaintedSprite(newCostume);
+                  }
               }
+              // Reset flags after saving
+              setIsPaintEditorOpen(false);
+              setIsPaintEditorBackground(false);
+              setEditingSprite(null);
           }}
           initialSprite={editingSprite}
+          isBackground={isPaintEditorBackground}
+          canvasWidth={480}
+          canvasHeight={isPaintEditorBackground ? 360 : 420}
       />}
       {isCodingCardsOpen && <CodingCards onClose={() => setIsCodingCardsOpen(false)} />}
       {isAboutOpen && <AboutModal onClose={() => setIsAboutOpen(false)} />}

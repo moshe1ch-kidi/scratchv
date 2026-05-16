@@ -119,6 +119,11 @@ const SHAPES_DATA = [
     { name: 'Woman Template', viewBox: '0 0 100 200', path: 'M 50,20 A 15,15 0 1,0 50,50 A 15,15 0 1,0 50,20 M 50,50 L 50,110 M 30,80 L 70,80 M 50,110 L 35,170 M 50,110 L 65,170', defaultColor: '#EC4899' }
 ];
 
+const BACKGROUNDS_INITIAL = [
+    { name: 'Landscape', viewBox: '0 0 100 100', path: 'M 0 50 L 50 10 L 100 50 L 100 100 L 0 100 Z', defaultColor: '#A7F3D0', isEditable: false },
+    { name: 'Room', viewBox: '0 0 100 100', path: 'M 0 0 L 100 0 L 100 100 L 0 100 Z', defaultColor: '#FED7AA', isEditable: false },
+];
+
 
 // --- Helper Components ---
 
@@ -160,11 +165,12 @@ const TopToolButton: React.FC<{
     <div className={`w-11 h-11 flex items-center justify-center rounded-2xl bg-white border-2 border-slate-100 shadow-sm group-hover:border-indigo-400 group-hover:shadow-md transition-all ${disabled ? '' : iconColor}`}>
        <i className={`fas ${icon} text-lg`}></i>
     </div>
+    {label && <span className="text-[10px] font-bold text-slate-500 mt-1">{label}</span>}
   </button>
 );
 
-const Separator: React.FC = () => <div className="w-px h-8 bg-slate-300 mx-1"></div>;
 
+const Separator: React.FC = () => <div className="w-px h-8 bg-slate-300 mx-1"></div>;
 
 const ColorSwatch: React.FC<{ color: string, active?: boolean, onClick: () => void }> = 
   ({ color, active, onClick }) => (
@@ -186,33 +192,6 @@ const ColorSwatch: React.FC<{ color: string, active?: boolean, onClick: () => vo
     </button>
   );
 
-const ColorPickerTarget: React.FC<{
-    type: 'fill' | 'stroke';
-    color: string;
-    isActive: boolean;
-    onClick: () => void;
-}> = ({ type, color, isActive, onClick }) => {
-    const isFill = type === 'fill';
-    const label = isFill ? 'Fill' : 'Stroke';
-
-    return (
-        <button
-            onClick={onClick}
-            title={label}
-            className={`relative w-16 h-16 flex flex-col items-center justify-center rounded-lg transition-all duration-150 border-2 ${
-                isActive ? 'bg-blue-100 border-blue-500' : 'bg-white border-slate-300 hover:border-slate-400'
-            }`}
-        >
-            {isFill ? (
-                <div className="w-8 h-8 rounded" style={{ backgroundColor: color, border: color.toUpperCase() === '#FFFFFF' ? '1px solid #ccc' : 'none' }}></div>
-            ) : (
-                <div className="w-8 h-8 rounded border-4" style={{ borderColor: color }}></div>
-            )}
-            <span className="text-xs font-bold text-slate-600 mt-1">{label}</span>
-        </button>
-    );
-};
-
 const COLORS = [
   'transparent', '#000000', '#475569', '#94a3b8', '#cbd5e1', '#FFFFFF',
   '#ef4444', '#dc2626', '#b91c1c', '#f97316', '#ea580c', '#c2410c',
@@ -229,8 +208,10 @@ const COLORS = [
 interface ShapeGalleryProps {
   onClose: () => void;
   onSelect: (shape: { name: string; path: string; viewBox: string; defaultColor?: string }) => void;
+  title: string;
+  data: { name: string; path: string; viewBox: string; defaultColor?: string }[];
 }
-const ShapeGallery: React.FC<ShapeGalleryProps> = ({ onClose, onSelect }) => {
+const ShapeGallery: React.FC<ShapeGalleryProps> = ({ onClose, onSelect, title, data }) => {
     return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
             <div 
@@ -238,23 +219,28 @@ const ShapeGallery: React.FC<ShapeGalleryProps> = ({ onClose, onSelect }) => {
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="p-4 border-b border-slate-200 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-slate-700">Choose a Shape</h2>
+                    <h2 className="text-xl font-bold text-slate-700">{title}</h2>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-800 text-2xl">
                         <i className="fas fa-times-circle"></i>
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4">
                     <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-4">
-                        {SHAPES_DATA.map(shape => (
+                        {data.map((shape, idx) => (
                             <div 
-                                key={shape.name} 
+                                key={shape.name + idx} 
                                 onClick={() => onSelect(shape)}
                                 title={shape.name}
-                                className="bg-white p-2 rounded-lg border border-slate-200 cursor-pointer aspect-square flex items-center justify-center transition-all hover:shadow-md hover:border-blue-400 hover:scale-105"
+                                className="bg-white p-2 rounded-lg border border-slate-200 cursor-pointer aspect-square flex items-center justify-center transition-all hover:shadow-md hover:border-blue-400 hover:scale-105 relative"
                             >
                                 <svg viewBox={shape.viewBox} className="w-full h-full text-slate-700" fill="currentColor">
                                     <path d={shape.path} />
                                 </svg>
+                                {'isEditable' in shape && shape.isEditable && (
+                                    <div className="absolute top-1 right-1 bg-white rounded-full p-1 shadow-sm">
+                                        <i className="fas fa-paint-brush text-[10px] text-blue-500"></i>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -400,24 +386,59 @@ interface PaintEditorProps {
   onClose: () => void;
   onSave: (svgDataUrl: string) => void;
   initialSprite?: Sprite | null;
+  canvasWidth?: number;
+  canvasHeight?: number;
+  isBackground?: boolean;
 }
 
-const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprite }) => {
+const PaintEditor: React.FC<PaintEditorProps> = ({ 
+  onClose, 
+  onSave, 
+  initialSprite, 
+  canvasWidth = 480, 
+  canvasHeight = 420,
+  isBackground = false
+}) => {
   const [shapes, setShapes] = useState<Shape[]>([]);
+  const [backgroundsLibrary, setBackgroundsLibrary] = useState(BACKGROUNDS_INITIAL);
+  const [background, setBackground] = useState<Shape | null>(null);
+
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [fillColor, setFillColor] = useState<string>('#EF4444');
   const [strokeColor, setStrokeColor] = useState<string>('#000000');
   const [activeColorTarget, setActiveColorTarget] = useState<'fill' | 'stroke'>('fill');
-  const [strokeWidth, setStrokeWidth] = useState(4);
+  const [isFillPickerOpen, setIsFillPickerOpen] = useState(false);
   const [isStrokePickerOpen, setIsStrokePickerOpen] = useState(false);
+  const [strokeWidth, setStrokeWidth] = useState(4);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
+  const [isBackgroundSelected, setIsBackgroundSelected] = useState(false);
   
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawingShape, setDrawingShape] = useState<Shape | null>(null);
   const [isShapeGalleryOpen, setIsShapeGalleryOpen] = useState(false);
+  const [galleryType, setGalleryType] = useState<'shape' | 'background'>('shape');
   const [isDragging, setIsDragging] = useState(false);
+  const [activeResizeHandle, setActiveResizeHandle] = useState<string | null>(null);
+  const [resizeStartInfo, setResizeStartInfo] = useState<{ x: number, y: number, bBox: { x: number, y: number, width: number, height: number }, shape: Shape } | null>(null);
 
   const [showGrid, setShowGrid] = useState(false);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: canvasWidth, height: canvasHeight });
+
+  useLayoutEffect(() => {
+    if (canvasContainerRef.current) {
+        const resizeObserver = new ResizeObserver(entries => {
+            for (const entry of entries) {
+                setCanvasDimensions({
+                    width: entry.contentRect.width,
+                    height: entry.contentRect.height
+                });
+            }
+        });
+        resizeObserver.observe(canvasContainerRef.current);
+        return () => resizeObserver.disconnect();
+    }
+  }, []);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const startPointRef = useRef<{x: number, y: number} | null>(null);
@@ -532,7 +553,19 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
             }
             
             const parsedShapes = parseSvgString(svgString);
-            setShapes(parsedShapes);
+            
+            // Separate background (largest rectangle)
+            let backgroundShape: Shape | null = null;
+            const shapesOnly = parsedShapes.filter(s => {
+                if (s.type === 'rect' && s.width >= canvasWidth - 10 && s.height >= canvasHeight - 10) {
+                    backgroundShape = s;
+                    return false;
+                }
+                return true;
+            });
+            
+            setShapes(shapesOnly);
+            setBackground(backgroundShape);
         } catch (error) {
             console.error("Error loading sprite for editing:", error);
         }
@@ -544,7 +577,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     if (isInitialLoadRef.current && shapes.length > 0) {
         // Wait for one render cycle to ensure DOM elements exist for accurate bounding box calculation
         const timer = setTimeout(() => {
-            const svgEl = document.querySelector('.paint-canvas-container svg');
+            const svgEl = svgRef.current;
             if (!svgEl) return;
             const svgRect = svgEl.getBoundingClientRect();
 
@@ -552,18 +585,14 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
             let hasContent = false;
 
             shapes.forEach(shape => {
-                const el = document.getElementById(shape.id);
-                if (el) {
-                    const rect = el.getBoundingClientRect();
-                    if (rect.width > 0 || rect.height > 0) {
-                        hasContent = true;
-                        const relX = rect.left - svgRect.left;
-                        const relY = rect.top - svgRect.top;
-                        totalBBox.x = Math.min(totalBBox.x, relX);
-                        totalBBox.y = Math.min(totalBBox.y, relY);
-                        totalBBox.x2 = Math.max(totalBBox.x2, relX + rect.width);
-                        totalBBox.y2 = Math.max(totalBBox.y2, relY + rect.height);
-                    }
+                const b = getBoundingBox(shape);
+                const strokeOffset = (shape.strokeWidth || 0) / 2;
+                if (b.width > 0 || b.height > 0) {
+                    hasContent = true;
+                    totalBBox.x = Math.min(totalBBox.x, b.x - strokeOffset);
+                    totalBBox.y = Math.min(totalBBox.y, b.y - strokeOffset);
+                    totalBBox.x2 = Math.max(totalBBox.x2, b.x + b.width + strokeOffset);
+                    totalBBox.y2 = Math.max(totalBBox.y2, b.y + b.height + strokeOffset);
                 }
             });
 
@@ -573,20 +602,20 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
                 const bboxCenterX = totalBBox.x + bboxWidth / 2;
                 const bboxCenterY = totalBBox.y + bboxHeight / 2;
 
-                const canvasWidth = 480;
-                const canvasHeight = 420;
-                const canvasCenterX = canvasWidth / 2;
-                const canvasCenterY = canvasHeight / 2;
+                const canvasWidthValue = canvasDimensions.width;
+                const canvasHeightValue = canvasDimensions.height;
+                const canvasCenterX = canvasWidthValue / 2;
+                const canvasCenterY = canvasHeightValue / 2;
 
                 const distFromCenter = Math.sqrt(Math.pow(bboxCenterX - canvasCenterX, 2) + Math.pow(bboxCenterY - canvasCenterY, 2));
                 const isOffCenter = distFromCenter > 20;
-                const isTooLarge = bboxWidth > canvasWidth * 0.95 || bboxHeight > canvasHeight * 0.95;
-                const isTooSmall = bboxWidth < canvasWidth * 0.1 && bboxHeight < canvasHeight * 0.1;
+                const isTooLarge = bboxWidth > canvasWidthValue * 0.95 || bboxHeight > canvasHeightValue * 0.95;
+                const isTooSmall = bboxWidth < canvasWidthValue * 0.1 && bboxHeight < canvasHeightValue * 0.1;
 
-                if (isOffCenter || isTooLarge || isTooSmall) {
+                if (!isBackground && (isOffCenter || isTooLarge || isTooSmall || distFromCenter > 0)) {
                     const padding = 60;
-                    const availableWidth = canvasWidth - padding * 2;
-                    const availableHeight = canvasHeight - padding * 2;
+                    const availableWidth = canvasWidthValue - padding * 2;
+                    const availableHeight = canvasHeightValue - padding * 2;
 
                     let scale = 1;
                     if (bboxWidth > 0 && bboxHeight > 0) {
@@ -595,8 +624,6 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
                         scale = Math.min(scaleX, scaleY);
                         if (!isTooLarge && scale > 1.2) scale = 1.2;
                     }
-
-                    if (Math.abs(scale - 1) < 0.05 && isOffCenter) scale = 1;
 
                     // Apply a UNIFORM group transform to all shapes to preserve relative positions perfectly
                     setShapes(prevShapes => prevShapes.map(s => {
@@ -629,8 +656,8 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
   };
 
   const handleShapeMouseDown = (e: React.MouseEvent, shapeId: string) => {
-      e.stopPropagation();
       if (activeTool === 'select') {
+          e.stopPropagation();
           setSelectedShapeId(shapeId);
           
           const shape = shapes.find(s => s.id === shapeId);
@@ -668,9 +695,8 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
   };
 
   const handleSvgMouseDown = (e: React.MouseEvent) => {
-    if (e.target === svgRef.current) {
-        setSelectedShapeId(null);
-    }
+    e.preventDefault();
+    setSelectedShapeId(null);
 
     if (activeTool === 'select') {
         return;
@@ -750,6 +776,37 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
                 setDrawingShape({ ...drawingShape, d: drawingShape.d + ` L${pos.x} ${pos.y}` });
                 break;
         }
+    } else if (activeResizeHandle && resizeStartInfo) {
+        const dx = e.clientX - resizeStartInfo.x;
+        const dy = e.clientY - resizeStartInfo.y;
+        
+        let delta = dx;
+        // For top-left or bottom-left, dragging left (negative dx) should increase size (so -dx > 0)
+        if (activeResizeHandle === 'tl' || activeResizeHandle === 'bl') {
+            delta = -dx;
+        }
+        
+        // Calculate scale factor from drag (simplified uniform scaling)
+        const factor = (resizeStartInfo.bBox.width + delta) / resizeStartInfo.bBox.width;
+        
+        // Apply scaling
+        setShapes(prevShapes => prevShapes.map(s => {
+            if (s.id !== resizeStartInfo.shape.id) return s;
+            
+            const newShape = { ...s };
+            // Simple uniform scale centered on the shape's original center
+            const b = resizeStartInfo.bBox;
+            const cx = b.x + b.width / 2;
+            const cy = b.y + b.height / 2;
+            
+            const wrapperTransform = `translate(${cx.toFixed(2)}, ${cy.toFixed(2)}) scale(${factor.toFixed(4)}) translate(${-cx.toFixed(2)}, ${-cy.toFixed(2)})`;
+            newShape.transform = `${wrapperTransform} ${resizeStartInfo.shape.transform || ''}`.trim();
+            
+            if ('strokeWidth' in newShape) {
+                newShape.strokeWidth = (resizeStartInfo.shape.strokeWidth || 1) * factor;
+            }
+            return newShape;
+        }));
     } else if (isDragging && activeTool === 'select' && selectedShapeId && dragStartRef.current) {
         const pos = getMousePosition(e);
         const currentDragStart = dragStartRef.current;
@@ -805,6 +862,12 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
       dragStartRef.current = null;
     }
 
+    if (activeResizeHandle) {
+        pushToHistory(shapes);
+        setActiveResizeHandle(null);
+        setResizeStartInfo(null);
+    }
+
     setIsDrawing(false);
     setDrawingShape(null);
     startPointRef.current = null;
@@ -837,9 +900,9 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     });
 
     let viewBox: string;
-    let finalViewBoxParts = {x: 0, y: 0, w: 480, h: 420};
+    let finalViewBoxParts = {x: 0, y: 0, w: canvasDimensions.width, h: canvasDimensions.height};
 
-    if (hasContent) {
+    if (hasContent && !isBackground) {
         const finalWidth = totalBBox.x2 - totalBBox.x;
         const finalHeight = totalBBox.y2 - totalBBox.y;
         const paddingX = finalWidth * 0.1;
@@ -853,7 +916,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
         };
         viewBox = `${finalViewBoxParts.x} ${finalViewBoxParts.y} ${finalViewBoxParts.w} ${finalViewBoxParts.h}`;
     } else {
-        viewBox = `0 0 480 420`;
+        viewBox = `0 0 ${canvasDimensions.width} ${canvasDimensions.height}`;
     }
 
     // Generate SVG string directly from shapes to ensure color accuracy
@@ -897,6 +960,11 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
   const handleDelete = () => {
     if (!selectedShapeId) return;
     pushToHistory(shapes);
+    if (background && selectedShapeId === background.id) {
+        setBackground(null);
+        setSelectedShapeId(null);
+        return;
+    }
     setShapes(shapes.filter(s => s.id !== selectedShapeId));
     setSelectedShapeId(null);
   };
@@ -965,20 +1033,28 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     if (activeColorTarget === 'fill') {
         setFillColor(color);
         if (selectedShapeId) {
-            setShapes(prev => prev.map(s => {
-                if (s.id !== selectedShapeId) return s;
-                if (s.type === 'rect' || s.type === 'triangle' || s.type === 'circle' || s.type === 'path' || s.type === 'text') {
-                    return { ...s, fill: color };
-                }
-                return s;
-            }));
+            if (background && selectedShapeId === background.id) {
+                setBackground({ ...background, fill: color });
+            } else {
+                setShapes(prev => prev.map(s => {
+                    if (s.id !== selectedShapeId) return s;
+                    if (s.type === 'rect' || s.type === 'triangle' || s.type === 'circle' || s.type === 'path' || s.type === 'text') {
+                        return { ...s, fill: color };
+                    }
+                    return s;
+                }));
+            }
         }
     } else { // activeColorTarget === 'stroke'
         setStrokeColor(color);
         if (selectedShapeId) {
-            setShapes(prev => prev.map(s => 
-                s.id === selectedShapeId ? { ...s, stroke: color } : s
-            ));
+            if (background && selectedShapeId === background.id) {
+                setBackground({ ...background, stroke: color });
+            } else {
+                setShapes(prev => prev.map(s => 
+                    s.id === selectedShapeId ? { ...s, stroke: color } : s
+                ));
+            }
         }
     }
   };
@@ -996,8 +1072,8 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
   
   const handleSelectShape = (shapeData: { name: string; path: string; viewBox: string; defaultColor?: string }) => {
     pushToHistory(shapes);
-    const canvasWidth = 480;
-    const canvasHeight = 420;
+    const canvasWidthValue = canvasDimensions.width;
+    const canvasHeightValue = canvasDimensions.height;
     const targetSize = 100;
 
     const viewBoxParts = shapeData.viewBox.split(' ').map(Number);
@@ -1005,8 +1081,8 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     
     const scale = targetSize / Math.max(vbW, vbH);
     // Adjust translation to account for viewBox offset
-    const translatedX = (canvasWidth / 2) - ((vbX + vbW / 2) * scale);
-    const translatedY = (canvasHeight / 2) - ((vbY + vbH / 2) * scale);
+    const translatedX = (canvasWidthValue / 2) - ((vbX + vbW / 2) * scale);
+    const translatedY = (canvasHeightValue / 2) - ((vbY + vbH / 2) * scale);
 
     const newShape: PathShape = {
         id: `s-${Date.now()}`,
@@ -1021,6 +1097,24 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     setShapes(prev => [...prev, newShape]);
     setIsShapeGalleryOpen(false);
   };
+
+  const handleSelectBackground = (shapeData: { name: string; path: string; viewBox: string; defaultColor?: string, isEditable?: boolean }) => {
+    pushToHistory(shapes);
+    const newBackground: Shape = {
+        id: `s-${Date.now()}`,
+        type: 'path',
+        d: shapeData.path,
+        fill: shapeData.defaultColor || '#FFFFFF',
+        stroke: 'none',
+        strokeWidth: 0,
+        transform: `scale(${canvasDimensions.width / 100}, ${canvasDimensions.height / 100})`
+    };
+    setBackground(newBackground);
+    if (!backgroundsLibrary.some(b => b.path === shapeData.path)) {
+        setBackgroundsLibrary(prev => [...prev, { ...shapeData, isEditable: false }]);
+    }
+    setIsShapeGalleryOpen(false);
+  };
   
   const SCALE_FACTOR = 1.1;
   const handleGrow = () => handleScale(SCALE_FACTOR);
@@ -1030,7 +1124,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     pushToHistory(shapes);
     
     let targetShapeIds: string[] = [];
-    let cx = 240; // Default center (canvas middle)
+    let cx = canvasDimensions.width / 2; // Default center (canvas middle)
 
     if (selectedShapeId) {
         targetShapeIds = [selectedShapeId];
@@ -1070,7 +1164,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     pushToHistory(shapes);
     
     let targetShapeIds: string[] = [];
-    let cx = 240, cy = 210; // Default center
+    let cx = canvasDimensions.width / 2, cy = canvasDimensions.height / 2; // Default center
 
     if (selectedShapeId) {
         targetShapeIds = [selectedShapeId];
@@ -1117,7 +1211,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
     pushToHistory(shapes);
     
     let targetShapeIds: string[] = [];
-    let cx = 240, cy = 210;
+    let cx = canvasWidth / 2, cy = canvasHeight / 2;
 
     if (selectedShapeId) {
         targetShapeIds = [selectedShapeId];
@@ -1132,12 +1226,15 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         shapes.forEach(s => {
             const b = getBoundingBox(s);
-            minX = Math.min(minX, b.x);
-            minY = Math.min(minY, b.y);
-            maxX = Math.max(maxX, b.x + b.width);
-            maxY = Math.max(maxY, b.y + b.height);
+            // Use 0 if the bbox is empty (e.g. for a point)
+            if (b.width > 0 || b.height > 0) {
+              minX = Math.min(minX, b.x);
+              minY = Math.min(minY, b.y);
+              maxX = Math.max(maxX, b.x + b.width);
+              maxY = Math.max(maxY, b.y + b.height);
+            }
         });
-        if (shapes.length > 0) {
+        if (minX !== Infinity) {
             cx = minX + (maxX - minX) / 2;
             cy = minY + (maxY - minY) / 2;
         }
@@ -1147,48 +1244,15 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
         if (!targetShapeIds.includes(s.id)) return s;
 
         const newShape = { ...s };
-        const element = shapeRefs.current[newShape.id];
+        // Use a wrapping transform to scale around the center (cx, cy)
+        const wrapperTransform = `translate(${cx.toFixed(2)}, ${cy.toFixed(2)}) scale(${factor.toFixed(4)}) translate(${-cx.toFixed(2)}, ${-cy.toFixed(2)})`;
+        newShape.transform = `${wrapperTransform} ${newShape.transform || ''}`.trim();
         
-        if (element && element instanceof SVGGraphicsElement) {
-            const transform = newShape.transform || '';
-            const scaleRegex = /scale\(([^)]+)\)/;
-            const translateRegex = /translate\(([^, )]+)[, ]*([^)]*)\)/;
-            
-            let currentScale = 1;
-            const scaleMatch = transform.match(scaleRegex);
-            if (scaleMatch) currentScale = parseFloat(scaleMatch[1]);
-            
-            let tx = 0, ty = 0;
-            const translateMatch = transform.match(translateRegex);
-            if (translateMatch) {
-                tx = parseFloat(translateMatch[1]);
-                const tyPart = translateMatch[2] ? translateMatch[2].trim() : '';
-                ty = tyPart ? parseFloat(tyPart) : 0;
-            }
-
-            const newScale = currentScale * factor;
-            // Formula to scale around center: newT = currentT + center * (currentScale - newScale)
-            const newTx = tx + cx * currentScale - cx * newScale;
-            const newTy = ty + cy * currentScale - cy * newScale;
-
-            let newTransform = transform;
-            if (scaleMatch) newTransform = newTransform.replace(scaleRegex, `scale(${newScale.toFixed(4)})`);
-            else newTransform = `${newTransform} scale(${newScale.toFixed(4)})`.trim();
-            
-            if (translateMatch) newTransform = newTransform.replace(translateRegex, `translate(${newTx.toFixed(2)}, ${newTy.toFixed(2)})`);
-            else newTransform = `translate(${newTx.toFixed(2)}, ${newTy.toFixed(2)}) ${newTransform}`.trim();
-            
-            newShape.transform = newTransform;
-        } else {
-            // Very simple fallback if ref not available
-            if (newShape.type === 'rect' || newShape.type === 'triangle') {
-                newShape.width *= factor;
-                newShape.height *= factor;
-            } else if (newShape.type === 'circle') {
-                newShape.rx *= factor;
-                newShape.ry *= factor;
-            }
+        // Also scale strokeWidth if applicable
+        if ('strokeWidth' in newShape) {
+            newShape.strokeWidth = (newShape.strokeWidth || 1) * factor;
         }
+        
         return newShape;
     }));
   };
@@ -1286,8 +1350,8 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
   
   return (
     <div className="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center p-2 backdrop-blur-sm overflow-hidden" dir="ltr">
-      {isShapeGalleryOpen && <ShapeGallery onClose={() => setIsShapeGalleryOpen(false)} onSelect={handleSelectShape} />}
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-6xl max-h-full flex flex-col border-8 border-indigo-400 overflow-hidden ring-4 ring-white ring-inset">
+      {isShapeGalleryOpen && <ShapeGallery onClose={() => setIsShapeGalleryOpen(false)} onSelect={galleryType === 'shape' ? handleSelectShape : handleSelectBackground} title={galleryType === 'shape' ? 'Choose a Shape' : 'Choose a Background'} data={galleryType === 'shape' ? SHAPES_DATA : backgroundsLibrary} />}
+      <div className={`bg-white shadow-2xl w-full max-w-6xl max-h-full flex flex-col border-8 border-indigo-400 overflow-hidden ring-4 ring-white ring-inset ${isBackground ? 'rounded-none' : 'rounded-[2rem]'}`}>
         {/* Kid-Friendly Header */}
         <div className="p-4 border-b-2 border-indigo-100 flex items-center justify-between bg-linear-to-r from-blue-500 via-indigo-500 to-purple-500 text-white shrink-0">
             <div className="flex items-center gap-4">
@@ -1326,15 +1390,40 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
         {/* Tools Toolbar (Action centric) */}
         <div className="p-2 border-b-2 border-indigo-50 flex items-center gap-6 overflow-x-auto bg-indigo-50/30 justify-center shrink-0 no-scrollbar">
             <div className="flex items-center bg-white p-1.5 rounded-2xl shadow-sm border-2 border-indigo-100/50">
+              <button onClick={() => { setIsFillPickerOpen(!isFillPickerOpen); setActiveColorTarget('fill'); }} className="w-10 h-10 rounded-xl flex items-center justify-center border-2 border-slate-200" style={{ backgroundColor: fillColor }}>
+                  <span className="sr-only">Fill Color</span>
+              </button>
+              <button onClick={() => { setIsStrokePickerOpen(!isStrokePickerOpen); setActiveColorTarget('stroke'); }} className="w-10 h-10 rounded-xl flex items-center justify-center border-2 border-slate-200" style={{ borderColor: strokeColor, borderWidth: 4 }}>
+                  <span className="sr-only">Stroke Color</span>
+              </button>
+              
+              <div className="w-px h-8 bg-indigo-50 mx-1"></div>
               <TopToolButton icon="fa-fill-drip" title="Toggle Fill" onClick={handleToggleFill} disabled={!selectedShapeId || (selectedShape?.type === 'line')} iconColor="text-purple-500" />
               <TopToolButton icon="fa-clone" title="Duplicate" onClick={handleDuplicate} disabled={!selectedShapeId} iconColor="text-emerald-500" />
               <TopToolButton icon="fa-trash" title="Delete" onClick={handleDelete} disabled={!selectedShapeId} iconColor="text-rose-500" />
               <TopToolButton icon="fa-broom" title="Clear Canvas" onClick={handleClearAll} disabled={shapes.length === 0} iconColor="text-red-700" />
             </div>
 
+            {/* Simple Color Picker Popover */}
+            {(isFillPickerOpen || isStrokePickerOpen) && (
+              <div className="absolute top-32 z-[200] bg-white p-4 rounded-2xl shadow-xl border-2 border-indigo-100 flex flex-col gap-4">
+                <div className="grid grid-cols-9 gap-2">
+                    {COLORS.map(color => (
+                        <ColorSwatch key={color} color={color} active={(activeColorTarget === 'fill' && fillColor === color) || (activeColorTarget === 'stroke' && strokeColor === color)} onClick={() => { handleColorChange(color); setIsFillPickerOpen(false); setIsStrokePickerOpen(false); }} />
+                    ))}
+                </div>
+                {activeColorTarget === 'stroke' && (
+                    <div className="flex flex-col gap-2">
+                        <label className="text-[10px] uppercase font-black text-indigo-400 tracking-wider">Line Thickness</label>
+                        <input type="range" min="1" max="100" value={strokeWidth} onChange={(e) => handleStrokeWidthChange(parseInt(e.target.value))} className="w-full h-3 bg-indigo-100 rounded-full appearance-none cursor-pointer accent-indigo-600" />
+                    </div>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center bg-white p-1.5 rounded-2xl shadow-sm border-2 border-indigo-100/50">
-              <TopToolButton icon="fa-search-plus" title="Grow" onClick={handleGrow} disabled={shapes.length === 0} iconColor="text-cyan-500" />
-              <TopToolButton icon="fa-search-minus" title="Shrink" onClick={handleShrink} disabled={shapes.length === 0} iconColor="text-cyan-500" />
+              <TopToolButton icon="fa-search-plus" label="Grow" title="Grow" onClick={handleGrow} disabled={shapes.length === 0} iconColor="text-cyan-500" />
+              <TopToolButton icon="fa-search-minus" label="Shrink" title="Shrink" onClick={handleShrink} disabled={shapes.length === 0} iconColor="text-cyan-500" />
               <div className="w-px h-8 bg-indigo-50 mx-1"></div>
               <TopToolButton icon="fa-arrows-alt-h" title="Flip Horizontal" onClick={handleFlipHorizontal} disabled={shapes.length === 0} iconColor="text-teal-600" />
               <TopToolButton icon="fa-sync-alt" title="Rotate" onClick={handleRotate} disabled={shapes.length === 0} iconColor="text-amber-600" />
@@ -1359,25 +1448,47 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
             <ToolButton icon="fa-square" label="Rectangle" active={activeTool === 'rect'} onClick={() => handleToolSelect('rect')} iconColor="text-orange-500" />
             <ToolButton icon="fa-circle" label="Circle" active={activeTool === 'circle'} onClick={() => handleToolSelect('circle')} iconColor="text-pink-500" />
             <ToolButton icon="fa-caret-up" label="Triangle" active={activeTool === 'triangle'} onClick={() => handleToolSelect('triangle')} iconColor="text-yellow-500" />
-            <ToolButton icon="fa-shapes" label="Library" onClick={() => setIsShapeGalleryOpen(true)} iconColor="text-violet-500" />
+            <ToolButton icon="fa-shapes" label="Library" onClick={() => { setGalleryType('shape'); setIsShapeGalleryOpen(true); }} iconColor="text-violet-500" />
+            <ToolButton icon="fa-image" label="Backgrounds" onClick={() => { setGalleryType('background'); setIsShapeGalleryOpen(true); }} iconColor="text-purple-500" />
             <ToolButton icon="fa-text-height" label="Text" active={activeTool === 'text'} onClick={() => handleToolSelect('text')} iconColor="text-indigo-500" />
           </aside>
 
           {/* Canvas Viewport */}
           <div className="flex-1 flex flex-col items-center justify-center p-6 relative overflow-hidden backdrop-blur-[2px]">
             <div 
-              className={`bg-white rounded-[2rem] shadow-2xl relative shrink-0 border-8 border-white ring-2 ring-indigo-100 ${activeTool === 'select' ? (isDragging ? 'cursor-grabbing' : 'cursor-default') : 'cursor-crosshair'} transition-all`}
+              ref={canvasContainerRef}
+              className={`bg-white shadow-2xl relative border-8 border-slate-800 ring-2 ring-indigo-100 ${activeTool === 'select' ? (isDragging ? 'cursor-grabbing' : 'cursor-default') : 'cursor-crosshair'} transition-all ${isBackground ? 'rounded-none' : 'rounded-[2rem]'} w-full h-full`}
               style={{ 
-                  width: '480px',
-                  height: '420px',
                   backgroundImage: showGrid 
                       ? 'linear-gradient(to right, #f1f5f9 1px, transparent 1px), linear-gradient(to bottom, #f1f5f9 1px, transparent 1px)' 
                       : 'repeating-conic-gradient(#f8fafc 0% 25%, transparent 0% 50%, #f8fafc 50% 75%, transparent 75%)',
                   backgroundSize: showGrid ? '20px 20px' : '20px 20px'
               }}
-              onMouseDown={handleSvgMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
             >
-              <svg ref={svgRef} width="100%" height="100%" className="rounded-[1.5rem]">
+              <svg ref={svgRef} width={canvasDimensions.width} height={canvasDimensions.height} className={`${isBackground ? 'rounded-none' : 'rounded-[1.5rem]'}`}
+                 onMouseDown={handleSvgMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+                       {background && (
+                            (() => {
+                                const commonProps = {
+                                  onMouseDown: (e: React.MouseEvent) => handleShapeMouseDown(e, background.id),
+                                  style: { cursor: activeTool === 'select' ? (isDragging && selectedShapeId === background.id ? 'grabbing' : 'grab') : 'crosshair' },
+                                  fill: background.fill,
+                                  stroke: background.stroke,
+                                  strokeWidth: background.strokeWidth,
+                                };
+                                const elementRef = (el: SVGElement | null) => { shapeRefs.current[background.id] = el; };
+                                if (background.type === 'rect') return <rect key={background.id} ref={elementRef} {...commonProps} transform={background.transform} x={background.x} y={background.y} width={background.width} height={background.height} />;
+                                if (background.type === 'circle') return <ellipse key={background.id} ref={elementRef} {...commonProps} transform={background.transform} cx={background.cx} cy={background.cy} rx={background.rx} ry={background.ry} />;
+                                if (background.type === 'line') return <line key={background.id} ref={elementRef} {...commonProps} transform={background.transform} x1={background.x1} y1={background.y1} x2={background.x2} y2={background.y2} strokeLinecap="round"/>;
+                                if (background.type === 'triangle') {
+                                    const points = `${background.x + background.width / 2},${background.y} ${background.x + background.width},${background.y + background.height} ${background.x},${background.y + background.height}`;
+                                    return <polygon key={background.id} ref={elementRef} {...commonProps} transform={background.transform} points={points} />;
+                                }
+                                if (background.type === 'path') return <path key={background.id} ref={elementRef} {...commonProps} d={background.d} transform={background.transform} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>;
+                                if (background.type === 'text') return <text key={background.id} ref={elementRef} {...commonProps} x={background.x} y={background.y} fontSize={background.fontSize} fontFamily={background.fontFamily} transform={background.transform} stroke="none" >{background.text}</text>;
+                                return null;
+                            })()
+                       )}
                   {shapes.map(shape => {
                     const commonProps = {
                       onMouseDown: (e: React.MouseEvent) => handleShapeMouseDown(e, shape.id),
@@ -1407,7 +1518,31 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
                   {drawingShape?.type === 'path' && <path {...drawingShape} strokeOpacity="0.5" strokeLinejoin="round" strokeLinecap="round"/>}
                   {selectedShape && (() => {
                       const b = getBoundingBox(selectedShape);
-                      return <rect id="selection-box" x={b.x-4} y={b.y-4} width={b.width+8} height={b.height+8} fill="none" stroke="#3b82f6" strokeWidth="2" strokeDasharray="4 4" pointerEvents="none" />;
+                      const HS = 6; // Handle size
+                      const handleProps = { fill: 'white', stroke: '#3b82f6', strokeWidth: 2 };
+                      
+                      const handleResize = (handle: string, e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          if (!selectedShape) return;
+                          const b = getBoundingBox(selectedShape);
+                          setActiveResizeHandle(handle);
+                          setResizeStartInfo({ x: e.clientX, y: e.clientY, bBox: b, shape: selectedShape });
+                      };
+
+                      return (
+                          <g>
+                             <rect x={b.x - 2} y={b.y - 2} width={b.width + 4} height={b.height + 4} fill="none" stroke="#3b82f6" strokeWidth="1" strokeDasharray="4 4" pointerEvents="none" />
+                             {/* Resize Handles */}
+                             <rect x={b.x - HS} y={b.y - HS} width={HS * 2} height={HS * 2} {...handleProps} cursor="nwse-resize" onMouseDown={(e) => handleResize('tl', e)} />
+                             <rect x={b.x + b.width - HS} y={b.y - HS} width={HS * 2} height={HS * 2} {...handleProps} cursor="nesw-resize" onMouseDown={(e) => handleResize('tr', e)} />
+                             <rect x={b.x - HS} y={b.y + b.height - HS} width={HS * 2} height={HS * 2} {...handleProps} cursor="nesw-resize" onMouseDown={(e) => handleResize('bl', e)} />
+                             <rect x={b.x + b.width - HS} y={b.y + b.height - HS} width={HS * 2} height={HS * 2} {...handleProps} cursor="nwse-resize" onMouseDown={(e) => handleResize('br', e)} />
+                             
+                             {/* Rotation Handle */}
+                             <circle cx={b.x + b.width / 2} cy={b.y - HS * 3} r={HS} fill="white" stroke="#3b82f6" strokeWidth="2" cursor="grab" />
+                             <text x={b.x + b.width / 2} y={b.y - HS * 3 + 2} textAnchor="middle" fontSize={HS} fill="#3b82f6" pointerEvents="none">↻</text>
+                          </g>
+                      );
                   })()}
               </svg>
             </div>
@@ -1423,7 +1558,19 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
                 <span className="bg-indigo-600 px-2.5 py-1 rounded-lg text-[10px] text-white font-bold shadow-sm">{shapes.length}</span>
             </div>
             
-            <div className="flex-1 overflow-y-auto flex flex-col gap-2 p-3 no-scrollbar">
+            <div className="flex-1 overflow-y-auto flex flex-col gap-4 p-3 no-scrollbar">
+
+                {background && (
+                     <div onClick={() => setSelectedShapeId(background.id)} className="group flex flex-col gap-2 p-2 rounded-2xl cursor-pointer transition-all border-2 bg-purple-100 hover:bg-purple-200 border-purple-50 text-slate-600 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center shrink-0">
+                                 <i className="fas fa-magic text-purple-400"></i>
+                            </div>
+                            <span className="flex-1 truncate capitalize font-black text-xs text-purple-900">Editing Background</span>
+                        </div>
+                    </div>
+                )}
+                <div className="border-t-2 border-indigo-100/50 my-2"></div>
                 {[...shapes].reverse().map((shape, index) => {
                     const actualIndex = shapes.length - 1 - index;
                     return (
@@ -1456,34 +1603,6 @@ const PaintEditor: React.FC<PaintEditorProps> = ({ onClose, onSave, initialSprit
                 )}
             </div>
           </aside>
-        </div>
-
-        {/* Visual Properties Bar */}
-        <div className="p-4 border-t-2 border-indigo-100 flex justify-center items-center gap-10 bg-white shrink-0 shadow-[0_-15px_40px_-20px_rgba(79,70,229,0.1)]">
-            <div className="flex gap-4 p-3 bg-indigo-50/50 rounded-[2rem] border-4 border-white shadow-inner">
-                <ColorPickerTarget type="fill" color={fillColor} isActive={activeColorTarget === 'fill'} onClick={() => setActiveColorTarget('fill')} />
-                <ColorPickerTarget type="stroke" color={strokeColor} isActive={activeColorTarget === 'stroke'} onClick={() => setActiveColorTarget('stroke')} />
-            </div>
-
-            <div className="flex flex-col gap-2 max-w-sm flex-1">
-                <div className="flex items-center justify-between px-2">
-                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Magic Palette</span>
-                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 shadow-sm">{activeColorTarget === 'fill' ? 'Coloring Mode' : 'Outline Mode'}</span>
-                </div>
-                <div className="grid grid-cols-9 gap-2 p-3 bg-slate-100/50 rounded-2xl border-2 border-slate-100 shadow-inner">
-                    {COLORS.map(color => (
-                        <ColorSwatch key={color} color={color} active={(activeColorTarget === 'fill' && fillColor === color) || (activeColorTarget === 'stroke' && strokeColor === color)} onClick={() => handleColorChange(color)} />
-                    ))}
-                </div>
-            </div>
-
-            <div className="flex flex-col gap-3 min-w-[180px] p-5 bg-indigo-50/30 rounded-[2rem] border-4 border-white shadow-inner">
-                <div className="flex justify-between items-center px-1">
-                    <span className="text-[10px] uppercase font-black text-indigo-400 tracking-wider">Line Thickness</span>
-                    <span className="text-sm font-black text-indigo-700 bg-white w-10 h-10 flex items-center justify-center rounded-2xl shadow-md border-2 border-indigo-100">{strokeWidth}</span>
-                </div>
-                <input type="range" min="1" max="100" value={strokeWidth} onChange={(e) => handleStrokeWidthChange(parseInt(e.target.value))} className="w-full h-3 bg-indigo-100 rounded-full appearance-none cursor-pointer accent-indigo-600" />
-            </div>
         </div>
       </div>
     </div>

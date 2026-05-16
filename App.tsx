@@ -193,6 +193,20 @@ const PresentationView: React.FC<{
 
 
 const App: React.FC = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    // 1. User Agent Check
+    const agentMatch = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // 2. Hardware Capability Check (pointer should be fine, touch is indicative of mobile)
+    const mediaMatch = window.matchMedia("(pointer: coarse)").matches;
+    
+    // If either detects a mobile-like context
+    setIsMobile(agentMatch || mediaMatch);
+    
+    console.log("Mobile detection result:", { agentMatch, mediaMatch });
+  }, []);
+
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
@@ -1396,6 +1410,12 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-[#FDFCF8] overflow-hidden font-sans select-none">
+      {isMobile && (
+        <div className="bg-yellow-100 border-b border-yellow-400 p-2 text-center text-yellow-800 text-sm font-bold z-[1000] relative">
+          <span>⚠ This app is designed for desktop computers. Mobile devices might not support all features correctly.</span>
+          <button className="ml-4 underline text-yellow-900" onClick={() => setIsMobile(false)}>Dismiss</button>
+        </div>
+      )}
       {isReloadConfirmOpen && (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full text-center">

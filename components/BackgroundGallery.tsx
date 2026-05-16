@@ -1,4 +1,4 @@
- import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 
 const BACKGROUND_URLS = [
   'https://codejredu.github.io/jr/scratchjr/svglibrary/Arctic.svg',
@@ -45,11 +45,13 @@ const BACKGROUND_URLS = [
 ];
 
 interface BackgroundGalleryProps {
+  customBackgrounds?: string[];
   onClose: () => void;
   onSelect: (url: string) => void;
+  onPaint: (initialUrl?: string) => void;
 }
 
-const BackgroundGallery: React.FC<BackgroundGalleryProps> = ({ onClose, onSelect }) => {
+const BackgroundGallery: React.FC<BackgroundGalleryProps> = ({ customBackgrounds = [], onClose, onSelect, onPaint }) => {
   const [visibleCount, setVisibleCount] = useState(15);
 
   const visibleBackgrounds = useMemo(() => {
@@ -75,20 +77,71 @@ const BackgroundGallery: React.FC<BackgroundGalleryProps> = ({ onClose, onSelect
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
-          <h2 className="text-xl font-bold text-slate-700">Choose a Background</h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-xl font-bold text-slate-700">Choose a Background</h2>
+          </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-800 text-2xl cursor-pointer">
             <i className="fas fa-times-circle"></i>
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-4" onScroll={handleScroll}>
+          {/* Top Row: Paint New + Custom Backgrounds */}
+          <div className="mb-4">
+             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+               {/* Blank Page block */}
+               <div 
+                 className="bg-white p-2 rounded-lg border-2 border-dashed border-slate-300 cursor-pointer aspect-video flex flex-col items-center justify-center transition-all hover:shadow-md hover:border-blue-400 hover:bg-blue-50 group"
+                 onClick={() => onPaint()}
+               >
+                 <i className="fas fa-plus text-3xl text-slate-300 group-hover:text-blue-400 mb-2"></i>
+                 <span className="text-slate-500 font-bold group-hover:text-blue-500">Paint New</span>
+               </div>
+               
+               {/* Custom Backgrounds */}
+               {customBackgrounds.map((url, idx) => (
+                 <div 
+                   key={`custom-${idx}`} 
+                   className="group relative bg-white p-2 rounded-lg border border-slate-200 cursor-pointer aspect-video flex items-center justify-center transition-all hover:shadow-md hover:border-blue-400 hover:scale-105 overflow-hidden"
+                 >
+                   <img 
+                     src={url} 
+                     alt="" 
+                     className="w-full h-full object-cover" 
+                     onClick={() => onSelect(url)}
+                   />
+                   
+                   {/* Paint button overlay that appears on hover */}
+                   <button 
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       onPaint(url);
+                     }}
+                     className="absolute top-2 right-2 w-10 h-10 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center border-2 border-white"
+                     title="Edit Background"
+                   >
+                     <i className="fas fa-paint-brush"></i>
+                   </button>
+                 </div>
+               ))}
+             </div>
+          </div>
+          
+          <div className="w-full h-px bg-slate-200 my-6"></div>
+
+          {/* Built-in Backgrounds */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {visibleBackgrounds.map((url, idx) => (
               <div 
                 key={`${url}-${idx}`} 
-                onClick={() => onSelect(url)}
-                className="bg-white p-2 rounded-lg border border-slate-200 cursor-pointer aspect-video flex items-center justify-center transition-all hover:shadow-md hover:border-blue-400 hover:scale-105 overflow-hidden"
+                className="group relative bg-white p-2 rounded-lg border border-slate-200 cursor-pointer aspect-video flex items-center justify-center transition-all hover:shadow-md hover:border-blue-400 hover:scale-105 overflow-hidden"
               >
-                <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                <img 
+                  src={url} 
+                  alt="" 
+                  className="w-full h-full object-cover" 
+                  loading="lazy" 
+                  onClick={() => onSelect(url)}
+                />
               </div>
             ))}
           </div>

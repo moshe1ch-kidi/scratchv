@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+ import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Sprite } from '../types';
 
 // --- Type Definitions ---
@@ -56,8 +56,15 @@ interface TextShape extends ShapeBase {
   fontFamily: string;
 }
 
-type Shape = RectShape | CircleShape | LineShape | PathShape | TriangleShape | TextShape;
-type Tool = 'select' | 'rect' | 'circle' | 'line' | 'freehand' | 'triangle' | 'text';
+interface PolyShape extends ShapeBase {
+  type: 'poly';
+  points: {x: number, y: number}[];
+  isClosed: boolean;
+}
+
+type Shape = RectShape | CircleShape | LineShape | PathShape | TriangleShape | TextShape | PolyShape;
+type Tool = 'select' | 'reshape' | 'rect' | 'circle' | 'line' | 'freehand' | 'triangle' | 'text';
+
 
 
 // --- Shape Data for Gallery ---
@@ -251,22 +258,89 @@ const ShapeGallery: React.FC<ShapeGalleryProps> = ({ onClose, onSelect, title, d
 };
 
 // --- SVG Parsing Logic ---
-const parseTransform = (transformString: string | null): { tx: number; ty: number } => {
-    if (!transformString) return { tx: 0, ty: 0 };
-    let totalTx = 0;
-    let totalTy = 0;
-    
-    // Support translate(x, y), translate(x y), and translate(x)
-    const translateRegex = /translate\s*\(\s*([0-9-.]+)\s*[, ]*\s*([0-9-.]+)?\s*\)/g;
+interface TransformMatrix { a: number; b: number; c: number; d: number; e: number; f: number; }
+
+const getIdentityMatrix = (): TransformMatrix => ({ a: 1, c: 0, e: 0, b: 0, d: 1, f: 0 });
+
+const parseTransformToMatrix = (transformString: string | null): TransformMatrix => {
+    let m = getIdentityMatrix();
+    if (!transformString) return m;
+
+    const regex = /(translate|scale|rotate)\s*\(\s*([^)]+)\s*\)/g;
     let match;
-    while ((match = translateRegex.exec(transformString)) !== null) {
-        const x = parseFloat(match[1] || '0');
-        const yPart = match[2] ? match[2].trim() : '';
-        const y = yPart ? parseFloat(yPart) : 0;
-        if (!isNaN(x)) totalTx += x;
-        if (!isNaN(y)) totalTy += y;
+    while ((match = regex.exec(transformString)) !== null) {
+        const type = match[1];
+        const args = match[2].split(/[ ,]+/).map(parseFloat);
+        
+        let op = getIdentityMatrix();
+
+        if (type === 'translate') {
+            op.e = args[0] || 0;
+            op.f = args[1] !== undefined && !isNaN(args[1]) ? args[1] : 0;
+        } else if (type === 'scale') {
+            op.a = args[0] || 1;
+            op.d = args[1] !== undefined && !isNaN(args[1]) ? args[1] : op.a;
+        } else if (type === 'rotate') {
+             const angle = (args[0] || 0) * Math.PI / 180;
+             const cx = args[1] || 0;
+             const cy = args[2] || 0;
+             const cos = Math.cos(angle);
+             const sin = Math.sin(angle);
+             op.a = cos;
+             op.c = -sin;
+             op.e = -cx * cos + cy * sin + cx;
+             op.b = sin;
+             op.d = cos;
+             op.f = -cx * sin - cy * cos + cy;
+        }
+        
+        // m = m * op
+        m = {
+            a: m.a * op.a + m.c * op.b,
+            c: m.a * op.c + m.c * op.d,
+            e: m.a * op.e + m.c * op.f + m.e,
+            b: m.b * op.a + m.d * op.b,
+            d: m.b * op.c + m.d * op.d,
+            f: m.b * op.e + m.d * op.f + m.f,
+        };
     }
-    return { tx: totalTx, ty: totalTy };
+    return m;
+};
+
+const applyMatrix = (m: TransformMatrix, p: {x: number, y: number}) => {
+    return {
+        x: m.a * p.x + m.c * p.y + m.e,
+        y: m.b * p.x + m.d * p.y + m.f,
+    };
+};
+
+const pointToSegmentDistance = (p: {x: number, y: number}, p1: {x: number, y: number}, p2: {x: number, y: number}) => {
+    const A = p.x - p1.x;
+    const B = p.y - p1.y;
+    const C = p2.x - p1.x;
+    const D = p2.y - p1.y;
+
+    const dot = A * C + B * D;
+    const len_sq = C * C + D * D;
+    let param = -1;
+    if (len_sq != 0) param = dot / len_sq;
+
+    let xx, yy;
+
+    if (param < 0) {
+        xx = p1.x;
+        yy = p1.y;
+    } else if (param > 1) {
+        xx = p2.x;
+        yy = p2.y;
+    } else {
+        xx = p1.x + param * C;
+        yy = p1.y + param * D;
+    }
+
+    const dx = p.x - xx;
+    const dy = p.y - yy;
+    return Math.sqrt(dx * dx + dy * dy);
 };
 
 const parseSvgString = (svgText: string): Shape[] => {
@@ -419,6 +493,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
   const [galleryType, setGalleryType] = useState<'shape' | 'background'>('shape');
   const [isDragging, setIsDragging] = useState(false);
   const [activeResizeHandle, setActiveResizeHandle] = useState<string | null>(null);
+  const [activeNodeIndex, setActiveNodeIndex] = useState<number | null>(null);
   const [resizeStartInfo, setResizeStartInfo] = useState<{ x: number, y: number, bBox: { x: number, y: number, width: number, height: number }, shape: Shape } | null>(null);
 
   const [showGrid, setShowGrid] = useState(false);
@@ -554,10 +629,10 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
             
             const parsedShapes = parseSvgString(svgString);
             
-            // Separate background (largest rectangle)
+            // Separate background (only the first largest rectangle)
             let backgroundShape: Shape | null = null;
             const shapesOnly = parsedShapes.filter(s => {
-                if (s.type === 'rect' && s.width >= canvasWidth - 10 && s.height >= canvasHeight - 10) {
+                if (!backgroundShape && s.type === 'rect' && s.width >= canvasWidth - 10 && s.height >= canvasHeight - 10) {
                     backgroundShape = s;
                     return false;
                 }
@@ -656,10 +731,18 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
   };
 
   const handleShapeMouseDown = (e: React.MouseEvent, shapeId: string) => {
-      if (activeTool === 'select') {
+      if (activeTool === 'select' || activeTool === 'reshape') {
           e.stopPropagation();
           setSelectedShapeId(shapeId);
           
+          if (activeTool === 'reshape') {
+            // When in reshape mode, dragging the body of the shape shouldn't move it, 
+            // but we might want them to be able to drag the nodes.
+            // Node dragging is handled by onMouseDown on the nodes.
+            // So if they click the shape body in reshape mode, maybe we do nothing or switch to it!
+            return;
+          }
+
           const shape = shapes.find(s => s.id === shapeId);
           if (!shape) return;
 
@@ -677,13 +760,19 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
           
           // Always capture translation if present
           const transform = shape.transform || '';
-          const translateMatch = transform.match(/translate\(([^, )]+)[, ]*([^)]*)\)/);
-          const tx = translateMatch ? parseFloat(translateMatch[1]) : 0;
-          const tyPart = translateMatch && translateMatch[2] ? translateMatch[2].trim() : '';
-          const ty = tyPart ? parseFloat(tyPart) : 0;
+          const translateMatch = transform.match(/^\s*translate\(([^, )]+)[, ]*([^)]*)\)\s*(.*)$/i);
+          let tx = 0, ty = 0, restTransform = transform;
+          
+          if (translateMatch) {
+              tx = parseFloat(translateMatch[1]);
+              const tyPart = translateMatch[2] ? translateMatch[2].trim() : '';
+              ty = tyPart ? parseFloat(tyPart) : 0;
+              restTransform = translateMatch[3] || '';
+          }
           
           shapeStart.tx = isNaN(tx) ? 0 : tx;
           shapeStart.ty = isNaN(ty) ? 0 : ty;
+          shapeStart.restTransform = restTransform;
           shapeStart.initialTransform = transform;
 
           dragStartRef.current = {
@@ -698,7 +787,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
     e.preventDefault();
     setSelectedShapeId(null);
 
-    if (activeTool === 'select') {
+    if (activeTool === 'select' || activeTool === 'reshape') {
         return;
     }
 
@@ -776,34 +865,59 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
                 setDrawingShape({ ...drawingShape, d: drawingShape.d + ` L${pos.x} ${pos.y}` });
                 break;
         }
+    } else if (activeTool === 'reshape' && activeNodeIndex !== null && selectedShapeId) {
+        const pos = getMousePosition(e);
+        setShapes(prevShapes => prevShapes.map(s => {
+            if (s.id !== selectedShapeId || s.type !== 'poly') return s;
+            const newPoints = [...s.points];
+            newPoints[activeNodeIndex] = { x: pos.x, y: pos.y };
+            return { ...s, points: newPoints };
+        }));
     } else if (activeResizeHandle && resizeStartInfo) {
         const dx = e.clientX - resizeStartInfo.x;
         const dy = e.clientY - resizeStartInfo.y;
         
-        let delta = dx;
-        // For top-left or bottom-left, dragging left (negative dx) should increase size (so -dx > 0)
-        if (activeResizeHandle === 'tl' || activeResizeHandle === 'bl') {
-            delta = -dx;
-        }
+        let deltaX = dx;
+        let deltaY = dy;
         
-        // Calculate scale factor from drag (simplified uniform scaling)
-        const factor = (resizeStartInfo.bBox.width + delta) / resizeStartInfo.bBox.width;
+        if (activeResizeHandle.includes('l')) deltaX = -dx;
+        else if (activeResizeHandle === 'tc' || activeResizeHandle === 'bc') deltaX = 0;
+        
+        if (activeResizeHandle.includes('t')) deltaY = -dy;
+        else if (activeResizeHandle === 'lc' || activeResizeHandle === 'rc') deltaY = 0;
+        
+        let factorX = resizeStartInfo.bBox.width !== 0 ? (resizeStartInfo.bBox.width + deltaX) / resizeStartInfo.bBox.width : 1;
+        let factorY = resizeStartInfo.bBox.height !== 0 ? (resizeStartInfo.bBox.height + deltaY) / resizeStartInfo.bBox.height : 1;
+        
+        if (['tl', 'tr', 'bl', 'br'].includes(activeResizeHandle)) {
+            factorY = factorX; 
+        }
         
         // Apply scaling
         setShapes(prevShapes => prevShapes.map(s => {
             if (s.id !== resizeStartInfo.shape.id) return s;
             
             const newShape = { ...s };
-            // Simple uniform scale centered on the shape's original center
             const b = resizeStartInfo.bBox;
             const cx = b.x + b.width / 2;
             const cy = b.y + b.height / 2;
             
-            const wrapperTransform = `translate(${cx.toFixed(2)}, ${cy.toFixed(2)}) scale(${factor.toFixed(4)}) translate(${-cx.toFixed(2)}, ${-cy.toFixed(2)})`;
+            let ox = cx;
+            let oy = cy;
+            if (activeResizeHandle === 'tl') { ox = b.x + b.width; oy = b.y + b.height; }
+            else if (activeResizeHandle === 'tr') { ox = b.x; oy = b.y + b.height; }
+            else if (activeResizeHandle === 'bl') { ox = b.x + b.width; oy = b.y; }
+            else if (activeResizeHandle === 'br') { ox = b.x; oy = b.y; }
+            else if (activeResizeHandle === 'tc') { ox = cx; oy = b.y + b.height; }
+            else if (activeResizeHandle === 'bc') { ox = cx; oy = b.y; }
+            else if (activeResizeHandle === 'lc') { ox = b.x + b.width; oy = cy; }
+            else if (activeResizeHandle === 'rc') { ox = b.x; oy = cy; }
+
+            const wrapperTransform = `translate(${ox.toFixed(2)}, ${oy.toFixed(2)}) scale(${factorX.toFixed(4)}, ${factorY.toFixed(4)}) translate(${-ox.toFixed(2)}, ${-oy.toFixed(2)})`;
             newShape.transform = `${wrapperTransform} ${resizeStartInfo.shape.transform || ''}`.trim();
             
             if ('strokeWidth' in newShape) {
-                newShape.strokeWidth = (resizeStartInfo.shape.strokeWidth || 1) * factor;
+                newShape.strokeWidth = (resizeStartInfo.shape.strokeWidth || 1) * Math.max(Math.abs(factorX), Math.abs(factorY));
             }
             return newShape;
         }));
@@ -821,18 +935,14 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
 
             // Simple robust dragging: Prepend translate(dx, dy) to the original transform
             // This ensures it behaves exactly like a world-space shift.
-            const baseTransform = shapeStart.initialTransform || '';
-            
-            // We want newTx = initialTx + dx, newTy = initialTy + dy
-            // The cleanest way is to replace the old translate with the new one
-            // while keeping all other transforms untouched and relative.
-            
-            // Find existing translate relative to shapeStart.tx/ty
             const newTx = shapeStart.tx + dx;
             const newTy = shapeStart.ty + dy;
             
-            let others = baseTransform.replace(/translate\([^)]*\)/g, '').trim();
-            newShape.transform = `translate(${newTx}, ${newTy}) ${others}`.trim();
+            if (newTx === 0 && newTy === 0) {
+                 newShape.transform = shapeStart.restTransform;
+            } else {
+                 newShape.transform = `translate(${newTx}, ${newTy}) ${shapeStart.restTransform}`.trim();
+            }
             
             // For rect, circle, line: we keep their original base coords fixed during drag 
             // and just use transform to move them.
@@ -867,12 +977,115 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
         setActiveResizeHandle(null);
         setResizeStartInfo(null);
     }
+    
+    if (activeNodeIndex !== null) {
+        pushToHistory(shapes);
+        setActiveNodeIndex(null);
+    }
 
     setIsDrawing(false);
     setDrawingShape(null);
     startPointRef.current = null;
   };
   
+  const handleShapeDoubleClick = (e: React.MouseEvent, shapeId: string) => {
+    e.stopPropagation();
+    const shape = shapes.find(s => s.id === shapeId);
+    if (!shape) return;
+
+    if (['rect', 'circle', 'triangle', 'line', 'poly'].includes(shape.type)) {
+      let points: {x: number, y: number}[] = [];
+      let isClosed = true;
+
+      if (shape.type === 'poly') {
+          if (activeTool === 'reshape' && selectedShapeId === shapeId) {
+             const pos = getMousePosition(e);
+             let minD = Infinity;
+             let insertIdx = -1;
+             
+             // Check distance to all segments
+             for (let i = 0; i < shape.points.length; i++) {
+                 const p1 = shape.points[i];
+                 const p2 = shape.points[(i + 1) % shape.points.length];
+                 if (!shape.isClosed && i === shape.points.length - 1) break;
+                 
+                 const dist = pointToSegmentDistance(pos, p1, p2);
+                 if (dist < minD) { 
+                     minD = dist; 
+                     insertIdx = i + 1; 
+                 }
+             }
+             
+             // If clicked relatively close to an edge, insert the point
+             if (insertIdx !== -1 && minD < 20) {
+                 pushToHistory(shapes);
+                 setShapes(prev => prev.map(s => {
+                     if (s.id !== shapeId || s.type !== 'poly') return s;
+                     const newP = [...s.points];
+                     newP.splice(insertIdx, 0, pos);
+                     return { ...s, points: newP };
+                 }));
+                 setActiveNodeIndex(insertIdx);
+             }
+             return; 
+          }
+          points = [...shape.points];
+          isClosed = shape.isClosed;
+      } else if (shape.type === 'rect') {
+        points = [
+          { x: shape.x, y: shape.y },
+          { x: shape.x + shape.width, y: shape.y },
+          { x: shape.x + shape.width, y: shape.y + shape.height },
+          { x: shape.x, y: shape.y + shape.height }
+        ];
+      } else if (shape.type === 'triangle') {
+        points = [
+          { x: shape.x + shape.width / 2, y: shape.y },
+          { x: shape.x + shape.width, y: shape.y + shape.height },
+          { x: shape.x, y: shape.y + shape.height }
+        ];
+      } else if (shape.type === 'circle') {
+        // Approximate circle with 12 points
+        const numPoints = 12;
+        for (let i = 0; i < numPoints; i++) {
+          const angle = (i * 2 * Math.PI) / numPoints;
+          points.push({
+            x: shape.cx + shape.rx * Math.cos(angle),
+            y: shape.cy + shape.ry * Math.sin(angle)
+          });
+        }
+      } else if (shape.type === 'line') {
+        points = [
+          { x: shape.x1, y: shape.y1 },
+          { x: shape.x2, y: shape.y2 }
+        ];
+        isClosed = false;
+      }
+
+      // Convert local points to screen coordinates by applying the transform if it exists
+      if (shape.transform) {
+          const m = parseTransformToMatrix(shape.transform);
+          points = points.map(p => applyMatrix(m, p));
+      }
+
+      const polyShape: PolyShape = {
+        id: shape.id,
+        type: 'poly',
+        points,
+        isClosed,
+        fill: shape.fill,
+        stroke: shape.stroke,
+        strokeWidth: shape.strokeWidth,
+        transform: '' // clear transform since points are now absolute
+      };
+      
+      pushToHistory(shapes);
+      setShapes(prev => prev.map(s => s.id === shapeId ? polyShape : s));
+      setActiveTool('reshape');
+      setSelectedShapeId(shapeId);
+    }
+  };
+
   const handleClearAll = () => {
     if (shapes.length === 0) return;
     if (confirm("Are you sure you want to clear the entire canvas?")) {
@@ -928,6 +1141,11 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
         const attrs = `${fillAttr} ${strokeAttr} ${strokeWidthAttr}`.trim();
         
         switch (shape.type) {
+            case 'poly': {
+                const pointsStr = shape.points.map(p => `${p.x},${p.y}`).join(' ');
+                const tag = shape.isClosed ? 'polygon' : 'polyline';
+                return `<${tag} points="${pointsStr}" ${attrs} ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
+            }
             case 'rect':
                 return `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" ${attrs} ${shape.transform ? `transform="${shape.transform}"` : ''} />`;
             case 'triangle': {
@@ -1042,7 +1260,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
             } else {
                 setShapes(prev => prev.map(s => {
                     if (s.id !== selectedShapeId) return s;
-                    if (s.type === 'rect' || s.type === 'triangle' || s.type === 'circle' || s.type === 'path' || s.type === 'text') {
+                    if (s.type === 'rect' || s.type === 'triangle' || s.type === 'circle' || s.type === 'path' || s.type === 'text' || s.type === 'poly') {
                         return { ...s, fill: color };
                     }
                     return s;
@@ -1135,8 +1353,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
         const shape = shapes.find(s => s.id === selectedShapeId);
         if (shape) {
             const bbox = getBoundingBox(shape);
-            const hasRef = !!shapeRefs.current[shape.id];
-            cx = hasRef ? (bbox.x + bbox.width / 2) : (bbox.x + parseTransform(shape.transform).tx + bbox.width / 2);
+            cx = bbox.x + bbox.width / 2;
         }
     } else {
         // Flip All - Calculate collective center
@@ -1175,15 +1392,8 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
         const shape = shapes.find(s => s.id === selectedShapeId);
         if (shape) {
             const bbox = getBoundingBox(shape);
-            const hasRef = !!shapeRefs.current[shape.id];
-            if (hasRef) {
-                cx = bbox.x + bbox.width / 2;
-                cy = bbox.y + bbox.height / 2;
-            } else {
-                const t = parseTransform(shape.transform);
-                cx = bbox.x + t.tx + bbox.width / 2;
-                cy = bbox.y + t.ty + bbox.height / 2;
-            }
+            cx = bbox.x + bbox.width / 2;
+            cy = bbox.y + bbox.height / 2;
         }
     } else {
         // Rotate All - Calculate collective center
@@ -1262,46 +1472,8 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
   };
 
   const getBoundingBox = (shape: Shape): {x: number; y: number; width: number; height: number} => {
-    const element = shapeRefs.current[shape.id];
-    const svg = svgRef.current;
-    
-    if (element && svg) {
-        // Use getBBox() which returns the bbox in the element's local coordinate system.
-        // Then multiply by the element's CTM (transformation matrix) to get world coordinates.
-        try {
-            const box = (element as SVGGraphicsElement).getBBox();
-            const matrix = (element as SVGGraphicsElement).getCTM();
-            
-            if (matrix) {
-                // Transform the four corners of the bbox
-                const points = [
-                    {x: box.x, y: box.y},
-                    {x: box.x + box.width, y: box.y},
-                    {x: box.x + box.width, y: box.y + box.height},
-                    {x: box.x, y: box.y + box.height}
-                ];
-                
-                const transformedPoints = points.map(p => {
-                    const pt = svg.createSVGPoint();
-                    pt.x = p.x;
-                    pt.y = p.y;
-                    return pt.matrixTransform(matrix);
-                });
-                
-                const minX = Math.min(...transformedPoints.map(p => p.x));
-                const minY = Math.min(...transformedPoints.map(p => p.y));
-                const maxX = Math.max(...transformedPoints.map(p => p.x));
-                const maxY = Math.max(...transformedPoints.map(p => p.y));
-                
-                return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-            }
-        } catch (e) {
-            console.error("Error calculating bounding box:", e);
-        }
-    }
-    
-    // Fallback if ref or CTM is not ready
     let baseBox = { x: 0, y: 0, width: 0, height: 0 };
+    
     switch (shape.type) {
         case 'rect': 
         case 'triangle':
@@ -1313,8 +1485,15 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
         case 'line':
             baseBox = { x: Math.min(shape.x1, shape.x2), y: Math.min(shape.y1, shape.y2), width: Math.abs(shape.x1 - shape.x2), height: Math.abs(shape.y1 - shape.y2) };
             break;
+        case 'poly': {
+            if (shape.points.length > 0) {
+                const xs = shape.points.map(p => p.x);
+                const ys = shape.points.map(p => p.y);
+                baseBox = { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
+            }
+            break;
+        }
         case 'path': 
-            // Crude estimation from path data if ref not ready
             const coords = shape.d.match(/-?[0-9.]+/g);
             if (coords) {
                 const nums = coords.map(parseFloat);
@@ -1334,13 +1513,33 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
                 }
             }
             break;
+        case 'text': {
+            const element = shapeRefs.current[shape.id];
+            if (element && typeof (element as SVGGraphicsElement).getBBox === 'function') {
+                 const box = (element as SVGGraphicsElement).getBBox();
+                 baseBox = { x: box.x, y: box.y, width: box.width, height: box.height };
+            } else {
+                 baseBox = { x: shape.x, y: shape.y - shape.fontSize, width: shape.text.length * shape.fontSize * 0.6, height: shape.fontSize };
+            }
+            break;
+        }
     }
 
-    // Attempt to account for translation in the transform string for the fallback
     if (shape.transform) {
-        const t = parseTransform(shape.transform);
-        baseBox.x += t.tx;
-        baseBox.y += t.ty;
+        const m = parseTransformToMatrix(shape.transform);
+        const p1 = applyMatrix(m, { x: baseBox.x, y: baseBox.y });
+        const p2 = applyMatrix(m, { x: baseBox.x + baseBox.width, y: baseBox.y });
+        const p3 = applyMatrix(m, { x: baseBox.x, y: baseBox.y + baseBox.height });
+        const p4 = applyMatrix(m, { x: baseBox.x + baseBox.width, y: baseBox.y + baseBox.height });
+        
+        const xs = [p1.x, p2.x, p3.x, p4.x];
+        const ys = [p1.y, p2.y, p3.y, p4.y];
+        return {
+            x: Math.min(...xs),
+            y: Math.min(...ys),
+            width: Math.max(...xs) - Math.min(...xs),
+            height: Math.max(...ys) - Math.min(...ys),
+        };
     }
     return baseBox;
   };
@@ -1349,7 +1548,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
   
   const handleToolSelect = (tool: Tool) => {
     setActiveTool(tool);
-    if (tool !== 'select') setSelectedShapeId(null);
+    if (tool !== 'select' && tool !== 'reshape') setSelectedShapeId(null);
   };
   
   return (
@@ -1371,10 +1570,10 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
             {/* Top Toolbar Actions */}
             <div className="flex items-center gap-2">
                 <div className="flex items-center bg-white/10 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 shadow-inner">
-                    <TopToolButton icon="fa-undo" title="Undo" onClick={handleUndo} disabled={!historyState.canUndo} iconColor="text-white drop-shadow-sm" />
-                    <TopToolButton icon="fa-redo" title="Redo" onClick={handleRedo} disabled={!historyState.canRedo} iconColor="text-white drop-shadow-sm" />
+                    <TopToolButton icon="fas fa-undo" title="Undo" onClick={handleUndo} disabled={!historyState.canUndo} iconColor="text-slate-500" />
+                    <TopToolButton icon="fas fa-redo" title="Redo" onClick={handleRedo} disabled={!historyState.canRedo} iconColor="text-slate-500" />
                     <div className="w-px h-8 bg-white/20 mx-1"></div>
-                    <TopToolButton icon="fa-grid-view" title="Toggle Grid" onClick={() => setShowGrid(!showGrid)} iconColor={showGrid ? "text-yellow-300" : "text-white/60"} />
+                    <TopToolButton icon="fas fa-th" title="Toggle Grid" onClick={() => setShowGrid(!showGrid)} iconColor={showGrid ? "text-yellow-600" : "text-slate-500"} />
                 </div>
 
                 <div className="h-10 w-px bg-white/20 mx-1"></div>
@@ -1446,6 +1645,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
           {/* Left Sidebar: Drawing Tools */}
           <aside className="w-20 bg-amber-50/30 p-3 flex flex-col items-center gap-3 border-r-2 border-amber-100/50 overflow-y-auto no-scrollbar shrink-0">
             <ToolButton icon="fa-mouse-pointer" label="Select" active={activeTool === 'select'} onClick={() => handleToolSelect('select')} iconColor="text-blue-600" />
+            <ToolButton icon="fa-draw-polygon" label="Reshape" active={activeTool === 'reshape'} onClick={() => handleToolSelect('reshape')} iconColor="text-indigo-400" />
             <div className="w-12 h-1 bg-amber-200/50 rounded-full my-1"></div>
             <ToolButton icon="fa-pencil-alt" label="Brush" active={activeTool === 'freehand'} onClick={() => handleToolSelect('freehand')} iconColor="text-emerald-500" />
             <ToolButton icon="fa-slash" label="Line" active={activeTool === 'line'} onClick={() => handleToolSelect('line')} iconColor="text-blue-400" />
@@ -1454,7 +1654,6 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
             <ToolButton icon="fa-caret-up" label="Triangle" active={activeTool === 'triangle'} onClick={() => handleToolSelect('triangle')} iconColor="text-yellow-500" />
             <ToolButton icon="fa-shapes" label="Library" onClick={() => { setGalleryType('shape'); setIsShapeGalleryOpen(true); }} iconColor="text-violet-500" />
             <ToolButton icon="fa-image" label="Backgrounds" onClick={() => { setGalleryType('background'); setIsShapeGalleryOpen(true); }} iconColor="text-purple-500" />
-            <ToolButton icon="fa-text-height" label="Text" active={activeTool === 'text'} onClick={() => handleToolSelect('text')} iconColor="text-indigo-500" />
           </aside>
 
           {/* Canvas Viewport */}
@@ -1488,6 +1687,11 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
                                     const points = `${background.x + background.width / 2},${background.y} ${background.x + background.width},${background.y + background.height} ${background.x},${background.y + background.height}`;
                                     return <polygon key={background.id} ref={elementRef} {...commonProps} transform={background.transform} points={points} />;
                                 }
+                                if (background.type === 'poly') {
+                                    const pointsStr = background.points.map(p => `${p.x},${p.y}`).join(' ');
+                                    const Tag = background.isClosed ? 'polygon' : 'polyline';
+                                    return <Tag key={background.id} ref={elementRef} {...commonProps} transform={background.transform} points={pointsStr} />;
+                                }
                                 if (background.type === 'path') return <path key={background.id} ref={elementRef} {...commonProps} d={background.d} transform={background.transform} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>;
                                 if (background.type === 'text') return <text key={background.id} ref={elementRef} {...commonProps} x={background.x} y={background.y} fontSize={background.fontSize} fontFamily={background.fontFamily} transform={background.transform} stroke="none" >{background.text}</text>;
                                 return null;
@@ -1496,6 +1700,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
                   {shapes.map(shape => {
                     const commonProps = {
                       onMouseDown: (e: React.MouseEvent) => handleShapeMouseDown(e, shape.id),
+                      onDoubleClick: (e: React.MouseEvent) => handleShapeDoubleClick(e, shape.id),
                       style: { cursor: activeTool === 'select' ? (isDragging && selectedShapeId === shape.id ? 'grabbing' : 'grab') : 'crosshair' },
                       fill: shape.fill,
                       stroke: shape.stroke,
@@ -1509,6 +1714,11 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
                         const points = `${shape.x + shape.width / 2},${shape.y} ${shape.x + shape.width},${shape.y + shape.height} ${shape.x},${shape.y + shape.height}`;
                         return <polygon key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} points={points} />;
                     }
+                    if (shape.type === 'poly') {
+                        const pointsStr = shape.points.map(p => `${p.x},${p.y}`).join(' ');
+                        const Tag = shape.isClosed ? 'polygon' : 'polyline';
+                        return <Tag key={shape.id} ref={elementRef} {...commonProps} transform={shape.transform} points={pointsStr} />;
+                    }
                     if (shape.type === 'path') return <path key={shape.id} ref={elementRef} {...commonProps} d={shape.d} transform={shape.transform} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>;
                     if (shape.type === 'text') return <text key={shape.id} ref={elementRef} {...commonProps} x={shape.x} y={shape.y} fontSize={shape.fontSize} fontFamily={shape.fontFamily} transform={shape.transform} stroke="none" >{shape.text}</text>;
                     return null;
@@ -1521,6 +1731,63 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
                   {drawingShape?.type === 'line' && <line {...drawingShape} strokeOpacity="0.5" strokeLinecap="round" />}
                   {drawingShape?.type === 'path' && <path {...drawingShape} strokeOpacity="0.5" strokeLinejoin="round" strokeLinecap="round"/>}
                   {selectedShape && (() => {
+                      if (activeTool === 'reshape' && selectedShape.type === 'poly') {
+                          return (
+                              <g>
+                                  {selectedShape.points.map((p, i) => {
+                                      const pNext = selectedShape.points[(i + 1) % selectedShape.points.length];
+                                      const isLastSegment = !selectedShape.isClosed && i === selectedShape.points.length - 1;
+                                      
+                                      const midX = (p.x + pNext.x) / 2;
+                                      const midY = (p.y + pNext.y) / 2;
+
+                                      return (
+                                          <React.Fragment key={i}>
+                                              {/* Actual Node */}
+                                              <circle 
+                                                   cx={p.x} 
+                                                   cy={p.y} 
+                                                   r={6} 
+                                                   fill={activeNodeIndex === i ? '#3b82f6' : 'white'} 
+                                                   stroke="#3b82f6" 
+                                                   strokeWidth="2" 
+                                                   cursor="pointer" 
+                                                   onMouseDown={(e) => {
+                                                       e.stopPropagation();
+                                                       setActiveNodeIndex(i);
+                                                   }} 
+                                              />
+                                              
+                                              {/* Midpoint helper to add new point */}
+                                              {!isLastSegment && (
+                                                  <circle 
+                                                       cx={midX} 
+                                                       cy={midY} 
+                                                       r={4} 
+                                                       fill="#dbeafe" 
+                                                       stroke="#3b82f6" 
+                                                       strokeWidth="1" 
+                                                       strokeDasharray="2 2"
+                                                       cursor="copy" 
+                                                       onMouseDown={(e) => {
+                                                           e.stopPropagation();
+                                                           setShapes(prev => prev.map(s => {
+                                                               if (s.id !== selectedShapeId || s.type !== 'poly') return s;
+                                                               const newP = [...s.points];
+                                                               newP.splice(i + 1, 0, {x: midX, y: midY});
+                                                               return { ...s, points: newP };
+                                                           }));
+                                                           setActiveNodeIndex(i + 1);
+                                                       }} 
+                                                  />
+                                              )}
+                                          </React.Fragment>
+                                      );
+                                  })}
+                              </g>
+                          );
+                      }
+
                       const b = getBoundingBox(selectedShape);
                       const HS = 6; // Handle size
                       const handleProps = { fill: 'white', stroke: '#3b82f6', strokeWidth: 2 };
@@ -1538,8 +1805,12 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
                              <rect x={b.x - 2} y={b.y - 2} width={b.width + 4} height={b.height + 4} fill="none" stroke="#3b82f6" strokeWidth="1" strokeDasharray="4 4" pointerEvents="none" />
                              {/* Resize Handles */}
                              <rect x={b.x - HS} y={b.y - HS} width={HS * 2} height={HS * 2} {...handleProps} cursor="nwse-resize" onMouseDown={(e) => handleResize('tl', e)} />
+                             <rect x={b.x + b.width / 2 - HS} y={b.y - HS} width={HS * 2} height={HS * 2} {...handleProps} cursor="ns-resize" onMouseDown={(e) => handleResize('tc', e)} />
                              <rect x={b.x + b.width - HS} y={b.y - HS} width={HS * 2} height={HS * 2} {...handleProps} cursor="nesw-resize" onMouseDown={(e) => handleResize('tr', e)} />
+                             <rect x={b.x - HS} y={b.y + b.height / 2 - HS} width={HS * 2} height={HS * 2} {...handleProps} cursor="ew-resize" onMouseDown={(e) => handleResize('lc', e)} />
+                             <rect x={b.x + b.width - HS} y={b.y + b.height / 2 - HS} width={HS * 2} height={HS * 2} {...handleProps} cursor="ew-resize" onMouseDown={(e) => handleResize('rc', e)} />
                              <rect x={b.x - HS} y={b.y + b.height - HS} width={HS * 2} height={HS * 2} {...handleProps} cursor="nesw-resize" onMouseDown={(e) => handleResize('bl', e)} />
+                             <rect x={b.x + b.width / 2 - HS} y={b.y + b.height - HS} width={HS * 2} height={HS * 2} {...handleProps} cursor="ns-resize" onMouseDown={(e) => handleResize('bc', e)} />
                              <rect x={b.x + b.width - HS} y={b.y + b.height - HS} width={HS * 2} height={HS * 2} {...handleProps} cursor="nwse-resize" onMouseDown={(e) => handleResize('br', e)} />
                              
                              {/* Rotation Handle */}

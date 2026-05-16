@@ -1412,7 +1412,7 @@ const App: React.FC = () => {
     <div className="flex flex-col h-screen bg-[#FDFCF8] overflow-hidden font-sans select-none">
       {isMobile && (
         <div className="bg-yellow-100 border-b border-yellow-400 p-2 text-center text-yellow-800 text-sm font-bold z-[1000] relative">
-          <span>⚠ This app is designed for desktop computers. Mobile devices might not support all features correctly.</span>
+          <span>⚠ This application is optimized for desktop computers. Mobile devices may experience limited functionality.</span>
           <button className="ml-4 underline text-yellow-900" onClick={() => setIsMobile(false)}>Dismiss</button>
         </div>
       )}

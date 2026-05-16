@@ -1310,7 +1310,7 @@ const App: React.FC = () => {
 
   const handleSaveProject = useCallback(() => {
     try {
-        const projectData = JSON.stringify(pages, null, 2); // Pretty print for readability
+        const projectData = JSON.stringify({ pages, customBackgrounds }, null, 2); // Pretty print for readability
         const blob = new Blob([projectData], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1346,10 +1346,13 @@ const App: React.FC = () => {
                 return;
             }
             try {
-                const loadedPages: Page[] = JSON.parse(fileContent);
+                const { pages: loadedPages, customBackgrounds: loadedCustomBackgrounds } = JSON.parse(fileContent);
                 // Basic validation
                 if (Array.isArray(loadedPages) && loadedPages.length > 0 && loadedPages[0].id && loadedPages[0].sprites) {
                     setPages(loadedPages);
+                    if (loadedCustomBackgrounds) {
+                        setCustomBackgrounds(loadedCustomBackgrounds);
+                    }
                     
                     const firstPage = loadedPages[0];
                     setCurrentPageId(firstPage.id);

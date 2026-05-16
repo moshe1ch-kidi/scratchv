@@ -920,7 +920,7 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
     }
 
     // Generate SVG string directly from shapes to ensure color accuracy
-    const elements = shapes.map(shape => {
+    const shapeToSvgString = (shape: Shape) => {
         const fillAttr = shape.fill ? `fill="${shape.fill}"` : '';
         const strokeAttr = shape.stroke ? `stroke="${shape.stroke}"` : '';
         const strokeWidthAttr = shape.strokeWidth ? `stroke-width="${shape.strokeWidth}"` : '';
@@ -945,11 +945,15 @@ const PaintEditor: React.FC<PaintEditorProps> = ({
             default:
                 return '';
         }
-    }).join('\n');
+    };
+
+    const elements = shapes.map(shapeToSvgString).join('\n');
+    const backgroundElement = background ? shapeToSvgString(background) : '';
 
     const svgString = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">
     <rect id="canvas-background" x="${finalViewBoxParts.x}" y="${finalViewBoxParts.y}" width="${finalViewBoxParts.w}" height="${finalViewBoxParts.h}" fill="transparent" />
+    ${backgroundElement}
     ${elements}
 </svg>`;
 

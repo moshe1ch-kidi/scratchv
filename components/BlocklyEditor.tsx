@@ -259,18 +259,27 @@ Blockly.setLocale(locale);
 
 // Register custom field immediately and robustly
 const registerField = () => {
-    const type = Blockly.registry.Type.FIELD;
     const name = 'field_sound_recorder';
-    if (!Blockly.registry.hasItem(type, name)) {
-        Blockly.registry.register(type, name, FieldSoundRecorder);
-    }
-    // Also register on fieldRegistry for compatibility with different Blockly loading styles
-    if (!(Blockly as any).fieldRegistry?.getClass?.(name)) {
-        try {
-            (Blockly as any).fieldRegistry?.register(name, FieldSoundRecorder);
-        } catch (e) {
-            // Field registry might be deprecated or handled differently in this version
+    const type = 'field'; // Use string literal for robustness
+    
+    try {
+        if (!Blockly.registry.hasItem(type, name)) {
+            Blockly.registry.register(type, name, FieldSoundRecorder);
         }
+    } catch (e) {
+        console.warn('Field registration via registry failed, trying fallbacks', e);
+    }
+
+    // Fallback 1: also register on the class itself and global field registry if it exists
+    try {
+        (Blockly as any).FieldSoundRecorder = FieldSoundRecorder;
+        
+        // Some versions of Blockly use a different registration mechanism for fields
+        if ((Blockly as any).fieldRegistry && typeof (Blockly as any).fieldRegistry.register === 'function') {
+            (Blockly as any).fieldRegistry.register(name, FieldSoundRecorder);
+        }
+    } catch (e) {
+        // Ignore fallback failures
     }
 };
 
@@ -517,9 +526,9 @@ const SEND_ENVELOPE_OPTIONS = [
 
 // Graphical options for Set Speed block
 const SPEED_OPTIONS = [
-    [{ 'src': 'https://codejr.org/scratchjr/assets/blockicons/speed0.svg', 'width': 60, 'height': 50, 'alt': 'Slow' }, 'slow'],
-    [{ 'src': 'https://codejr.org/scratchjr/assets/blockicons/speed1.svg', 'width': 60, 'height': 50, 'alt': 'Medium' }, 'medium'],
-    [{ 'src': 'https://codejr.org/scratchjr/assets/blockicons/speed2.svg', 'width': 60, 'height': 50, 'alt': 'Fast' }, 'fast'],
+    [{ 'src': 'https://moshech1.github.io/jrweb.github.io/scratchjr/assets/blockicons/speed0.svg', 'width': 60, 'height': 50, 'alt': 'Slow' }, 'slow'],
+    [{ 'src': 'https://moshech1.github.io/jrweb.github.io/scratchjr/assets/blockicons/speed1.svg', 'width': 60, 'height': 50, 'alt': 'Medium' }, 'medium'],
+    [{ 'src': 'https://moshech1.github.io/jrweb.github.io/scratchjr/assets/blockicons/speed2.svg', 'width': 60, 'height': 50, 'alt': 'Fast' }, 'fast'],
 ];
 
 // Generate dynamic SVG icon for pages with number overlay
